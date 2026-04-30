@@ -5,6 +5,9 @@
   "environment": "development",
   "timezone": "Asia/Shanghai",
   "data_provider": "akshare",
+  "network": {
+    "request_timeout_seconds": 10
+  },
   "storage": {
     "data_dir": "data",
     "raw_dir": "data/raw",
