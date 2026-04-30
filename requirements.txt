@@ -1,0 +1,13 @@
+pandas
+numpy
+requests
+akshare
+tushare
+duckdb
+pydantic
+python-dotenv
+loguru
+apscheduler
+typer
+rich
+pytest

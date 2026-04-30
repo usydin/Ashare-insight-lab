@@ -1,0 +1,34 @@
+{
+  "project_name": "A股智研台",
+  "project_name_en": "AShare Insight Lab",
+  "version": "0.1.0-dev",
+  "environment": "development",
+  "timezone": "Asia/Shanghai",
+  "data_provider": "akshare",
+  "storage": {
+    "data_dir": "data",
+    "raw_dir": "data/raw",
+    "processed_dir": "data/processed",
+    "sim_dir": "data/sim",
+    "report_dir": "reports",
+    "log_dir": "logs"
+  },
+  "paper_trading": {
+    "enabled": true,
+    "initial_cash": 1000000,
+    "commission_rate": 0.0003,
+    "slippage_rate": 0.001,
+    "max_position_ratio_single_stock": 0.1,
+    "max_daily_loss_ratio": 0.03
+  },
+  "risk_control": {
+    "exclude_st": true,
+    "exclude_suspended": true,
+    "max_single_stock_weight": 0.1,
+    "max_industry_weight": 0.3
+  },
+  "report": {
+    "daily_report_enabled": true,
+    "weekly_report_enabled": true
+  }
+}

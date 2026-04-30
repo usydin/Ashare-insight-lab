@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Env
+.env
+
+# macOS
+.DS_Store
+
+# Logs
+logs/*.log
+
+# Local data
+data/raw/*
+data/processed/*
+data/sim/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/sim/.gitkeep
+
+# Reports
+reports/daily/*
+reports/weekly/*
+!reports/daily/.gitkeep
+!reports/weekly/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+tmp/
+.cache/
+
+# Database
+*.db
+*.duckdb
+*.sqlite
