@@ -29,6 +29,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     fetch_timeouts: list[int] = []
     save_calls: list[tuple[pd.DataFrame, Path]] = []
     report_records: list[dict[str, object]] = []
+    report_kwargs: dict[str, object] = {}
 
     def fake_fetch_stock_daily_history(
         symbol: str,
@@ -69,9 +70,21 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
+        stage_name: str = "V0.1.1 run-daily",
+        processed_csv_path: str = "data/processed/daily_signals.csv",
+        raw_data_dir: str = "data/raw",
+        log_path: str = "logs/app.log",
     ) -> Path:
         del report_date, generated_at, output_path
         report_records.extend(records)
+        report_kwargs.update(
+            {
+                "stage_name": stage_name,
+                "processed_csv_path": processed_csv_path,
+                "raw_data_dir": raw_data_dir,
+                "log_path": log_path,
+            }
+        )
         return tmp_path / "daily_report.md"
 
     monkeypatch.setattr(app, "get_logger", lambda: logger)
@@ -106,17 +119,38 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     result = app.run_daily()
 
     processed_dataframe = save_calls[-1][0]
+    success_row = processed_dataframe.loc[processed_dataframe["code"] == "000001"].iloc[0]
     failed_row = processed_dataframe.loc[processed_dataframe["code"] == "600519"].iloc[0]
 
     assert result == 0
     assert fetch_timeouts == [8, 8]
     assert len(processed_dataframe) == 2
+    assert {"fetch_time", "raw_file_path", "latest_trade_date", "signal_level"}.issubset(
+        set(processed_dataframe.columns)
+    )
+    assert success_row["latest_trade_date"] == "2024-01-25"
+    assert success_row["signal_level"] == "positive"
+    assert success_row["raw_file_path"] == "000001_daily_raw.csv"
+    assert success_row["fetch_time"]
     assert failed_row["data_status"] == "fetch_failed"
     assert failed_row["error_message"] == "ProxyError: unable to connect to proxy"
+    assert failed_row["signal_level"] == "unavailable"
+    assert failed_row["raw_file_path"] == ""
     assert any(record["code"] == "600519" for record in report_records)
+    assert report_kwargs == {
+        "stage_name": "V0.1.1 run-daily",
+        "processed_csv_path": "daily_signals.csv",
+        "raw_data_dir": "data/raw",
+        "log_path": "logs/app.log",
+    }
     assert logger.exceptions == [
         "data collection failed for 600519 贵州茅台: ProxyError: unable to connect to proxy"
     ]
+    assert any(
+        "run-daily summary: success_count=1 failed_count=1 trend_up_count=1 trend_down_count=0 neutral_count=0"
+        == message
+        for message in logger.infos
+    )
 
 
 def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) -> None:

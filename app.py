@@ -30,7 +30,7 @@ def print_app_info() -> None:
     print(f"当前环境: {settings['environment']}")
     print(f"项目根目录: {project_root}")
     print(f"当前时间: {current_time}")
-    print("提示: V0.1 dev skeleton is ready.")
+    print("提示: V0.1.1 run-daily stability enhancement is ready.")
 
 
 def run_daily() -> int:
@@ -42,11 +42,15 @@ def run_daily() -> int:
         generated_at = run_started_at.isoformat(timespec="seconds")
         report_date = run_started_at.strftime("%Y-%m-%d")
         timeout_seconds = int(settings.get("network", {}).get("request_timeout_seconds", 10))
+        raw_dir = settings["storage"]["raw_dir"]
+        processed_dir = settings["storage"]["processed_dir"]
+        log_dir = settings["storage"]["log_dir"]
+        log_path = str(Path(log_dir) / "app.log")
 
-        ensure_directory(settings["storage"]["raw_dir"])
-        ensure_directory(settings["storage"]["processed_dir"])
+        ensure_directory(raw_dir)
+        ensure_directory(processed_dir)
         ensure_directory("reports/daily")
-        ensure_directory(settings["storage"]["log_dir"])
+        ensure_directory(log_dir)
 
         all_watchlist_items = watchlist_config.get("watchlist", [])
         enabled_items = [item for item in all_watchlist_items if item.get("enabled") is True]
@@ -62,6 +66,7 @@ def run_daily() -> int:
         for item in enabled_items:
             code = str(item.get("code", "")).strip()
             name = item.get("name", "")
+            fetch_time = datetime.now().isoformat(timespec="seconds")
             logger.info("data collection started for %s %s", code, name)
 
             try:
@@ -71,12 +76,15 @@ def run_daily() -> int:
                 )
                 raw_path = save_dataframe_csv(
                     raw_dataframe,
-                    Path(settings["storage"]["raw_dir"]) / f"{code}_daily_raw.csv",
+                    Path(raw_dir) / f"{code}_daily_raw.csv",
                 )
+                raw_relative_path = str(raw_path.relative_to(get_project_root()))
 
                 strategy_result = analyze_ma_signal(normalized_dataframe)
                 record = {
+                    "fetch_time": fetch_time,
                     "date": strategy_result["date"],
+                    "latest_trade_date": strategy_result["date"],
                     "code": code,
                     "name": name,
                     "market": item.get("market", ""),
@@ -85,10 +93,15 @@ def run_daily() -> int:
                     "ma5": strategy_result["ma5"],
                     "ma20": strategy_result["ma20"],
                     "signal": strategy_result["signal"],
+                    "signal_level": _determine_signal_level(
+                        strategy_result["signal"],
+                        strategy_result["data_status"],
+                    ),
                     "reason": strategy_result["reason"],
                     "data_status": strategy_result["data_status"],
                     "error_message": strategy_result["error_message"],
-                    "raw_file": str(raw_path.relative_to(get_project_root())),
+                    "raw_file": raw_relative_path,
+                    "raw_file_path": raw_relative_path,
                 }
                 records.append(record)
                 logger.info("data collection succeeded for %s %s", code, name)
@@ -98,7 +111,9 @@ def run_daily() -> int:
                 message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
                 records.append(
                     {
+                        "fetch_time": fetch_time,
                         "date": "",
+                        "latest_trade_date": "",
                         "code": code,
                         "name": name,
                         "market": item.get("market", ""),
@@ -107,18 +122,23 @@ def run_daily() -> int:
                         "ma5": None,
                         "ma20": None,
                         "signal": "neutral",
+                        "signal_level": "unavailable",
                         "reason": "数据采集失败",
                         "data_status": "fetch_failed",
                         "error_message": message,
                         "raw_file": "",
+                        "raw_file_path": "",
                     }
                 )
                 logger.exception("data collection failed for %s %s: %s", code, name, message)
 
+        summary = summarize_run_daily_records(records)
         processed_dataframe = pd.DataFrame(
             records,
             columns=[
+                "fetch_time",
                 "date",
+                "latest_trade_date",
                 "code",
                 "name",
                 "market",
@@ -127,22 +147,37 @@ def run_daily() -> int:
                 "ma5",
                 "ma20",
                 "signal",
+                "signal_level",
                 "reason",
                 "data_status",
                 "error_message",
+                "raw_file",
+                "raw_file_path",
             ],
         )
 
         processed_path = save_dataframe_csv(
             processed_dataframe,
-            Path(settings["storage"]["processed_dir"]) / "daily_signals.csv",
+            Path(processed_dir) / "daily_signals.csv",
         )
         report_path = write_daily_report(
             records,
             report_date=report_date,
             generated_at=generated_at,
+            stage_name="V0.1.1 run-daily",
+            processed_csv_path=_to_relative_path(processed_path),
+            raw_data_dir=raw_dir,
+            log_path=log_path,
         )
 
+        logger.info(
+            "run-daily summary: success_count=%s failed_count=%s trend_up_count=%s trend_down_count=%s neutral_count=%s",
+            summary["success_count"],
+            summary["failed_count"],
+            summary["trend_up_count"],
+            summary["trend_down_count"],
+            summary["neutral_count"],
+        )
         logger.info("daily signals saved to %s", processed_path)
         logger.info("daily report written to %s", report_path)
         logger.info("run-daily finished")
@@ -158,6 +193,49 @@ def run_daily() -> int:
         logger.warning("run-daily interrupted by user")
         print("run-daily 已被用户中断")
         return 130
+
+
+def summarize_run_daily_records(records: list[dict[str, Any]]) -> dict[str, int]:
+    total_count = len(records)
+    failed_count = sum(1 for record in records if record.get("data_status") == "fetch_failed")
+    insufficient_data_count = sum(
+        1 for record in records if record.get("data_status") == "insufficient_data"
+    )
+    trend_up_count = sum(1 for record in records if record.get("signal") == "trend_up")
+    trend_down_count = sum(1 for record in records if record.get("signal") == "trend_down")
+    neutral_count = sum(
+        1
+        for record in records
+        if record.get("signal") == "neutral" and record.get("data_status") == "ok"
+    )
+    success_count = total_count - failed_count
+
+    return {
+        "total_count": total_count,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "trend_up_count": trend_up_count,
+        "trend_down_count": trend_down_count,
+        "neutral_count": neutral_count,
+        "insufficient_data_count": insufficient_data_count,
+    }
+
+
+def _determine_signal_level(signal: str, data_status: str) -> str:
+    if data_status != "ok":
+        return "unavailable"
+    if signal == "trend_up":
+        return "positive"
+    if signal == "trend_down":
+        return "negative"
+    return "neutral"
+
+
+def _to_relative_path(path: str | Path) -> str:
+    path_object = Path(path)
+    if path_object.is_absolute():
+        return str(path_object.relative_to(get_project_root()))
+    return str(path_object)
 
 
 def main() -> int:

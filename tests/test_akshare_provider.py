@@ -1,7 +1,7 @@
 from http.client import RemoteDisconnected
 
 import pandas as pd
-from requests.exceptions import ProxyError, ReadTimeout
+from requests.exceptions import ConnectionError, ProxyError, ReadTimeout
 
 from app_core.data_sources import akshare_provider
 
@@ -83,4 +83,12 @@ def test_summarize_fetch_error_distinguishes_common_network_errors() -> None:
     assert (
         akshare_provider.summarize_fetch_error(ReadTimeout("timed out"), timeout_seconds=10)
         == "TimeoutError: request timed out after 10s"
+    )
+    assert (
+        akshare_provider.summarize_fetch_error(ConnectionError("connection reset by peer"))
+        == "ConnectionError: connection failed"
+    )
+    assert (
+        akshare_provider.summarize_fetch_error(RuntimeError("unexpected response body"))
+        == "UnknownError: unexpected response body"
     )

@@ -5,6 +5,8 @@ import inspect
 
 import akshare as ak
 import pandas as pd
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import ProxyError
 
 
 DATE_COLUMN_ALIASES = ("date", "日期", "Date", "trade_date", "交易日期")
@@ -68,8 +70,16 @@ def summarize_fetch_error(error: BaseException, timeout_seconds: int = 10) -> st
         return "RemoteDisconnected: remote end closed connection"
     if error_type in {"ReadTimeout", "ConnectTimeout", "TimeoutError"} or "timed out" in lowered_message:
         return f"TimeoutError: request timed out after {timeout_seconds}s"
-    if error_type == "ProxyError" or "proxy" in lowered_message:
+    if isinstance(error, ProxyError) or error_type == "ProxyError" or "proxy" in lowered_message:
         return "ProxyError: unable to connect to proxy"
+    if (
+        isinstance(error, RequestsConnectionError)
+        or error_type == "ConnectionError"
+        or "connection aborted" in lowered_message
+        or "failed to establish a new connection" in lowered_message
+        or "connection reset by peer" in lowered_message
+    ):
+        return "ConnectionError: connection failed"
     if error_type == "KeyboardInterrupt":
         return "KeyboardInterrupt: interrupted by user"
 
@@ -78,8 +88,8 @@ def summarize_fetch_error(error: BaseException, timeout_seconds: int = 10) -> st
         short_message += "..."
 
     if short_message:
-        return f"{error_type}: {short_message}"
-    return error_type
+        return f"UnknownError: {short_message}"
+    return "UnknownError: unexpected fetch error"
 
 
 def _find_column(columns: Iterable[object], aliases: tuple[str, ...]) -> str | None:

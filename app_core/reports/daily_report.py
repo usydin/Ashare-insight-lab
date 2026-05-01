@@ -10,63 +10,70 @@ from app_core.storage.file_store import write_text_file
 def render_daily_report(
     records: list[dict[str, Any]],
     generated_at: str | None = None,
+    *,
+    stage_name: str = "V0.1.1 run-daily",
+    processed_csv_path: str = "data/processed/daily_signals.csv",
+    raw_data_dir: str = "data/raw",
+    log_path: str = "logs/app.log",
 ) -> str:
     """Render the daily markdown report content."""
     generated_at = generated_at or datetime.now().isoformat(timespec="seconds")
+    summary = _build_summary(records)
 
     lines = [
         "# A股智研台每日观察报告",
         "",
         f"- 生成时间：{generated_at}",
-        "- 当前阶段说明：V0.1 run-daily",
-        "- 安全边界提醒：本报告仅用于研究和模拟盘，不构成实盘交易建议",
+        f"- 当前阶段：{stage_name}",
+        "- 安全边界提醒：本报告仅用于研究和模拟盘验证，不构成实盘交易建议。",
         "",
-        "## 自选股摘要表",
+        "## 本次执行摘要",
         "",
-        "| 代码 | 名称 | 最新收盘价 | MA5 | MA20 | 策略信号 | 数据状态 |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        f"- 自选股总数：{summary['total_count']}",
+        f"- 成功采集数量：{summary['success_count']}",
+        f"- 失败数量：{summary['failed_count']}",
+        f"- trend_up 数量：{summary['trend_up_count']}",
+        f"- trend_down 数量：{summary['trend_down_count']}",
+        f"- neutral 数量：{summary['neutral_count']}",
+        f"- insufficient_data 数量：{summary['insufficient_data_count']}",
+        "",
+        "## 自选股信号表",
+        "",
+        "| code | name | latest_trade_date | close | ma5 | ma20 | signal | signal_level | data_status | reason |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
 
     for record in records:
         lines.append(
-            "| {code} | {name} | {close} | {ma5} | {ma20} | {signal} | {data_status} |".format(
+            (
+                "| {code} | {name} | {latest_trade_date} | {close} | {ma5} | {ma20} | "
+                "{signal} | {signal_level} | {data_status} | {reason} |"
+            ).format(
                 code=record.get("code", ""),
                 name=record.get("name", ""),
+                latest_trade_date=_display_value(record.get("latest_trade_date")),
                 close=_display_value(record.get("close")),
                 ma5=_display_value(record.get("ma5")),
                 ma20=_display_value(record.get("ma20")),
                 signal=record.get("signal", ""),
+                signal_level=record.get("signal_level", ""),
                 data_status=record.get("data_status", ""),
+                reason=record.get("reason", ""),
             )
         )
 
-    lines.extend(["", "## 个股明细", ""])
-
-    for record in records:
-        lines.extend(
-            [
-                f"### {record.get('code', '')} {record.get('name', '')}",
-                "",
-                f"- 代码：{record.get('code', '')}",
-                f"- 名称：{record.get('name', '')}",
-                f"- 最新收盘价：{_display_value(record.get('close'))}",
-                f"- MA5：{_display_value(record.get('ma5'))}",
-                f"- MA20：{_display_value(record.get('ma20'))}",
-                f"- 策略信号：{record.get('signal', '')}",
-                f"- 简要原因：{record.get('reason', '')}",
-                f"- 数据状态：{record.get('data_status', '')}",
-                "",
-            ]
-        )
-
-    failures = [record for record in records if record.get("data_status") != "ok"]
-    lines.extend(["## 失败或异常列表", ""])
+    failures = [
+        record
+        for record in records
+        if record.get("data_status") != "ok" or record.get("signal_level") == "unavailable"
+    ]
+    lines.extend(["", "## 异常列表", ""])
 
     if failures:
         for record in failures:
             lines.append(
                 f"- {record.get('code', '')} {record.get('name', '')}: "
-                f"{record.get('error_message') or record.get('reason', '未知异常')}"
+                f"{_display_error_message(record)}"
             )
     else:
         lines.append("- 无")
@@ -74,10 +81,17 @@ def render_daily_report(
     lines.extend(
         [
             "",
+            "## 运行产物",
+            "",
+            f"- processed CSV 路径：`{processed_csv_path}`",
+            f"- raw 数据目录：`{raw_data_dir}`",
+            f"- 日志路径：`{log_path}`",
+            "",
             "## 下一步建议占位",
             "",
-            "- 观察趋势信号是否连续出现",
-            "- 后续补充更完整的日报结构与异常说明",
+            "- 增加更多指标",
+            "- 增加模拟盘",
+            "- 后续由 OpenClaw 读取日报并生成盘前/盘后摘要",
         ]
     )
 
@@ -90,11 +104,22 @@ def write_daily_report(
     report_date: str | None = None,
     generated_at: str | None = None,
     output_path: str | Path | None = None,
+    stage_name: str = "V0.1.1 run-daily",
+    processed_csv_path: str = "data/processed/daily_signals.csv",
+    raw_data_dir: str = "data/raw",
+    log_path: str = "logs/app.log",
 ) -> Path:
     """Write the markdown report and return the saved path."""
     report_date = report_date or datetime.now().strftime("%Y-%m-%d")
     relative_output_path = Path(output_path or f"reports/daily/{report_date}_daily_report.md")
-    content = render_daily_report(records, generated_at=generated_at)
+    content = render_daily_report(
+        records,
+        generated_at=generated_at,
+        stage_name=stage_name,
+        processed_csv_path=processed_csv_path,
+        raw_data_dir=raw_data_dir,
+        log_path=log_path,
+    )
     return write_text_file(content, relative_output_path)
 
 
@@ -102,3 +127,37 @@ def _display_value(value: Any) -> str:
     if value is None or value == "":
         return "-"
     return str(value)
+
+
+def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
+    total_count = len(records)
+    failed_count = sum(1 for record in records if record.get("data_status") == "fetch_failed")
+    insufficient_data_count = sum(
+        1 for record in records if record.get("data_status") == "insufficient_data"
+    )
+    trend_up_count = sum(1 for record in records if record.get("signal") == "trend_up")
+    trend_down_count = sum(1 for record in records if record.get("signal") == "trend_down")
+    neutral_count = sum(
+        1
+        for record in records
+        if record.get("signal") == "neutral" and record.get("data_status") == "ok"
+    )
+    success_count = total_count - failed_count
+
+    return {
+        "total_count": total_count,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "trend_up_count": trend_up_count,
+        "trend_down_count": trend_down_count,
+        "neutral_count": neutral_count,
+        "insufficient_data_count": insufficient_data_count,
+    }
+
+
+def _display_error_message(record: dict[str, Any]) -> str:
+    message = str(record.get("error_message") or record.get("reason") or "未知异常")
+    first_line = message.splitlines()[0].strip()
+    if "traceback" in first_line.lower():
+        return "UnknownError: unexpected fetch error"
+    return first_line
