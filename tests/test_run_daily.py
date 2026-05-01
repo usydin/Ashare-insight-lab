@@ -70,7 +70,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.1.1 run-daily",
+        stage_name: str = "V0.1.2 run-daily",
         processed_csv_path: str = "data/processed/daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
@@ -138,7 +138,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["raw_file_path"] == ""
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-        "stage_name": "V0.1.1 run-daily",
+        "stage_name": "V0.1.2 run-daily",
         "processed_csv_path": "daily_signals.csv",
         "raw_data_dir": "data/raw",
         "log_path": "logs/app.log",
@@ -148,6 +148,11 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     ]
     assert any(
         "run-daily summary: success_count=1 failed_count=1 trend_up_count=1 trend_down_count=0 neutral_count=0"
+        == message
+        for message in logger.infos
+    )
+    assert any(
+        "run-daily started app=AShare Insight Lab version=0.1.2 environment=development developer=pL enabled_symbols=2 request_timeout=8s"
         == message
         for message in logger.infos
     )

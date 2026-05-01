@@ -14,6 +14,18 @@ from app_core.data_sources.akshare_provider import (
     summarize_fetch_error,
 )
 from app_core.path_utils import get_project_root
+from app_core.project_info import (
+    APP_NAME_CN,
+    APP_NAME_EN,
+    COPYRIGHT_TEXT,
+    DEVELOPER,
+    MAINTAINER,
+    PROJECT_PURPOSE,
+    REPOSITORY_URL,
+    SAFETY_NOTICE,
+    STAGE,
+    VERSION,
+)
 from app_core.reports.daily_report import write_daily_report
 from app_core.storage.file_store import ensure_directory, save_dataframe_csv
 from app_core.strategies.ma_strategy import analyze_ma_signal
@@ -24,13 +36,40 @@ def print_app_info() -> None:
     project_root = get_project_root()
     current_time = datetime.now().isoformat(timespec="seconds")
 
-    print(f"项目名称: {settings['project_name']}")
-    print(f"英文名称: {settings['project_name_en']}")
-    print(f"版本号: {settings['version']}")
+    print(f"项目名称: {APP_NAME_CN}")
+    print(f"英文名称: {APP_NAME_EN}")
+    print(f"版本号: {VERSION}")
     print(f"当前环境: {settings['environment']}")
     print(f"项目根目录: {project_root}")
     print(f"当前时间: {current_time}")
-    print("提示: V0.1.1 run-daily stability enhancement is ready.")
+    print(f"开发者: {DEVELOPER}")
+    print(f"版权: {COPYRIGHT_TEXT}")
+    print(f"仓库地址: {REPOSITORY_URL}")
+    print(f"安全提醒: {SAFETY_NOTICE}")
+    print("提示: V0.1.2 project metadata management is ready.")
+
+
+def print_version_info() -> None:
+    print(f"{APP_NAME_EN} {VERSION} ({STAGE})")
+
+
+def print_about_info() -> None:
+    settings = load_settings()
+
+    lines = [
+        f"项目名称: {APP_NAME_CN}",
+        f"英文名称: {APP_NAME_EN}",
+        f"当前版本: {VERSION}",
+        f"当前阶段: {STAGE}",
+        f"当前环境: {settings['environment']}",
+        f"开发者: {DEVELOPER}",
+        f"维护者: {MAINTAINER}",
+        f"项目定位: {PROJECT_PURPOSE}",
+        f"版权声明: {COPYRIGHT_TEXT}",
+        f"仓库地址: {REPOSITORY_URL}",
+        f"安全提醒: {SAFETY_NOTICE}",
+    ]
+    print("\n".join(lines))
 
 
 def run_daily() -> int:
@@ -42,6 +81,7 @@ def run_daily() -> int:
         generated_at = run_started_at.isoformat(timespec="seconds")
         report_date = run_started_at.strftime("%Y-%m-%d")
         timeout_seconds = int(settings.get("network", {}).get("request_timeout_seconds", 10))
+        environment = settings.get("environment", "development")
         raw_dir = settings["storage"]["raw_dir"]
         processed_dir = settings["storage"]["processed_dir"]
         log_dir = settings["storage"]["log_dir"]
@@ -56,7 +96,11 @@ def run_daily() -> int:
         enabled_items = [item for item in all_watchlist_items if item.get("enabled") is True]
 
         logger.info(
-            "run-daily started with %s enabled symbols, request timeout=%ss",
+            "run-daily started app=%s version=%s environment=%s developer=%s enabled_symbols=%s request_timeout=%ss",
+            APP_NAME_EN,
+            VERSION,
+            environment,
+            DEVELOPER,
             len(enabled_items),
             timeout_seconds,
         )
@@ -164,7 +208,7 @@ def run_daily() -> int:
             records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.1.1 run-daily",
+            stage_name="V0.1.2 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -243,11 +287,21 @@ def main() -> int:
         print_app_info()
         return 0
 
+    if sys.argv[1] == "--version":
+        print_version_info()
+        return 0
+
+    if sys.argv[1] == "about":
+        print_about_info()
+        return 0
+
     if sys.argv[1] == "run-daily":
         return run_daily()
 
     print("用法:")
     print("python app.py")
+    print("python app.py --version")
+    print("python app.py about")
     print("python app.py run-daily")
     return 1
 

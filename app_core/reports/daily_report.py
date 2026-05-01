@@ -4,6 +4,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app_core.project_info import (
+    APP_NAME_CN,
+    APP_NAME_EN,
+    COPYRIGHT_TEXT,
+    DEVELOPER,
+    SAFETY_NOTICE,
+    VERSION,
+)
 from app_core.storage.file_store import write_text_file
 
 
@@ -11,7 +19,7 @@ def render_daily_report(
     records: list[dict[str, Any]],
     generated_at: str | None = None,
     *,
-    stage_name: str = "V0.1.1 run-daily",
+    stage_name: str = "V0.1.2 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -23,9 +31,13 @@ def render_daily_report(
     lines = [
         "# A股智研台每日观察报告",
         "",
+        f"- 项目名称：{APP_NAME_CN} / {APP_NAME_EN}",
+        f"- 当前版本：{VERSION}",
+        f"- 开发维护：{DEVELOPER}",
+        f"- 版权：{COPYRIGHT_TEXT}",
         f"- 生成时间：{generated_at}",
         f"- 当前阶段：{stage_name}",
-        "- 安全边界提醒：本报告仅用于研究和模拟盘验证，不构成实盘交易建议。",
+        f"- 安全提醒：{SAFETY_NOTICE}",
         "",
         "## 本次执行摘要",
         "",
@@ -104,7 +116,7 @@ def write_daily_report(
     report_date: str | None = None,
     generated_at: str | None = None,
     output_path: str | Path | None = None,
-    stage_name: str = "V0.1.1 run-daily",
+    stage_name: str = "V0.1.2 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",

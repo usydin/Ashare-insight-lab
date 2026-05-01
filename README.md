@@ -7,11 +7,12 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 本项目当前作为开发骨架使用，目标是先建立清晰、可维护、可验证的目录结构、配置方式与文档体系，为后续 `run-daily` 和策略模块开发打基础。
 
 当前 `run-daily` 已具备基础数据采集、均线信号、日报输出和失败不中断能力。
+当前项目已加入统一项目元信息管理，开发者为 pL，版权品牌为 @B‘lock10STUdio。
 
 ## 当前阶段
 
-- 阶段名称：`V0.1.1 run-daily 稳定性增强`
-- 当前目标：增强 `run-daily` 的稳定性、输出字段、日报结构与错误处理
+- 阶段名称：`V0.1.2 项目元信息统一管理`
+- 当前目标：统一管理项目名称、版本、开发者、版权信息与展示输出
 - 当前边界：不实现模拟盘、不接入实盘交易、不引入自动下单能力
 
 ## 开发机与部署机分离方案
@@ -54,6 +55,7 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 - 底层核心：由 Python 平台实现数据采集、数据存储、策略信号、模拟盘、风控和报告
 - 依赖管理：`requirements.txt`
 - 配置管理：`config/settings.json`、`config/watchlist.json`
+- 元信息管理：`app_core/project_info.py`
 - 数据目录：`data/raw`、`data/processed`、`data/sim`
 - 报告目录：`reports/daily`、`reports/weekly`
 - 核心代码组织：`app_core/`
@@ -173,9 +175,19 @@ python app.py
 - 当前环境
 - 项目根目录
 - 当前时间
-- `V0.1 dev skeleton is ready.`
+- 开发者
+- 版权
+- 仓库地址
+- 安全提醒
+- `V0.1.2 project metadata management is ready.`
 
-### 3. 校验 JSON 配置
+### 3. 查看版本与项目信息
+
+```bash
+python app.py --version
+python app.py about
+```
+### 4. 校验 JSON 配置
 
 ```bash
 python -m json.tool config/settings.json
@@ -196,6 +208,6 @@ python -m json.tool config/watchlist.json
 
 ## 说明
 
-- 当前仓库尚未提交首个 commit
-- 当前分支可能仍为 `master`，建议在首次提交前统一切换为 `main`
-- 当前 GitHub 地址不可用时，应先在本地完成初始化，再处理远程仓库修复或重建
+- 当前分支：`main`
+- 项目元信息、开发者信息和版权信息已统一管理
+- 版权与项目信息见 `COPYRIGHT.md`、`NOTICE.md` 与 `docs/开发者与项目信息.md`
