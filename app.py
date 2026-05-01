@@ -13,6 +13,7 @@ from app_core.data_sources.akshare_provider import (
     fetch_stock_daily_history,
     summarize_fetch_error,
 )
+from app_core.diagnostics.data_source_health import run_data_source_health_check
 from app_core.path_utils import get_project_root
 from app_core.project_info import (
     APP_NAME_CN,
@@ -46,7 +47,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.1.2 project metadata management is ready.")
+    print("提示: V0.1.3 data source health diagnostics is ready.")
 
 
 def print_version_info() -> None:
@@ -70,6 +71,22 @@ def print_about_info() -> None:
         f"安全提醒: {SAFETY_NOTICE}",
     ]
     print("\n".join(lines))
+
+
+def run_data_source_doctor() -> int:
+    logger = get_logger()
+    settings = load_settings()
+    watchlist_config = load_json("config/watchlist.json")
+
+    result = run_data_source_health_check(settings, watchlist_config, logger)
+    report_path = result["report_path"]
+
+    print("数据源健康检查执行完成")
+    print(f"诊断结论: {result['overall_status']}")
+    print(f"诊断报告: {report_path}")
+    print("日志路径: logs/app.log")
+
+    return 0
 
 
 def run_daily() -> int:
@@ -208,7 +225,7 @@ def run_daily() -> int:
             records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.1.2 run-daily",
+            stage_name="V0.1.3 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -295,6 +312,9 @@ def main() -> int:
         print_about_info()
         return 0
 
+    if sys.argv[1] in {"check-data-source", "doctor"}:
+        return run_data_source_doctor()
+
     if sys.argv[1] == "run-daily":
         return run_daily()
 
@@ -302,6 +322,8 @@ def main() -> int:
     print("python app.py")
     print("python app.py --version")
     print("python app.py about")
+    print("python app.py check-data-source")
+    print("python app.py doctor")
     print("python app.py run-daily")
     return 1
 

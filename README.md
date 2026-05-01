@@ -8,11 +8,12 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 当前 `run-daily` 已具备基础数据采集、均线信号、日报输出和失败不中断能力。
 当前项目已加入统一项目元信息管理，开发者为 pL，版权品牌为 @B‘lock10STUdio。
+当前项目已新增 `check-data-source` / `doctor` 命令，用于检查 AKShare、代理环境与示例股票采集状态。
 
 ## 当前阶段
 
-- 阶段名称：`V0.1.2 项目元信息统一管理`
-- 当前目标：统一管理项目名称、版本、开发者、版权信息与展示输出
+- 阶段名称：`V0.1.3 数据源健康检查与网络诊断`
+- 当前目标：补充数据源健康检查、代理环境诊断与 Markdown 健康报告输出
 - 当前边界：不实现模拟盘、不接入实盘交易、不引入自动下单能力
 
 ## 开发机与部署机分离方案
@@ -61,6 +62,7 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 - 核心代码组织：`app_core/`
 - AI 与自动化扩展：后续接入 OpenClaw，作为本地 AI Agent 与自动化调度层
 - 启动方式：`python app.py`
+- 诊断命令：`python app.py check-data-source` / `python app.py doctor`
 
 本阶段不引入复杂框架，不做过度封装，以清晰目录和明确职责为主。
 
@@ -179,7 +181,7 @@ python app.py
 - 版权
 - 仓库地址
 - 安全提醒
-- `V0.1.2 project metadata management is ready.`
+- `V0.1.3 data source health diagnostics is ready.`
 
 ### 3. 查看版本与项目信息
 
@@ -187,7 +189,24 @@ python app.py
 python app.py --version
 python app.py about
 ```
-### 4. 校验 JSON 配置
+
+### 4. 执行数据源健康检查
+
+```bash
+python app.py check-data-source
+python app.py doctor
+```
+
+该命令会检查：
+
+- Python 与项目运行信息
+- 代理环境变量
+- `requests` / `akshare` 依赖可用性
+- 东方财富基础 URL 连通性
+- 示例股票采集状态
+- Markdown 健康检查报告输出
+
+### 5. 校验 JSON 配置
 
 ```bash
 python -m json.tool config/settings.json
@@ -205,6 +224,7 @@ python -m json.tool config/watchlist.json
 5. 生成日报与复盘报告
 6. 规划 OpenClaw 接入方式，使其承担本地 AI 调度、摘要生成、风险解释和异常监控
 7. 逐步为部署机准备独立运行方案
+8. 持续增强数据源诊断、错误提示和运行稳定性
 
 ## 说明
 

@@ -1,7 +1,7 @@
 from http.client import RemoteDisconnected
 
 import pandas as pd
-from requests.exceptions import ConnectionError, ProxyError, ReadTimeout
+from requests.exceptions import ConnectionError, ProxyError, ReadTimeout, SSLError
 
 from app_core.data_sources import akshare_provider
 
@@ -83,6 +83,10 @@ def test_summarize_fetch_error_distinguishes_common_network_errors() -> None:
     assert (
         akshare_provider.summarize_fetch_error(ReadTimeout("timed out"), timeout_seconds=10)
         == "TimeoutError: request timed out after 10s"
+    )
+    assert (
+        akshare_provider.summarize_fetch_error(SSLError("[SSL] record layer failure"))
+        == "SSLError: SSL record layer failure"
     )
     assert (
         akshare_provider.summarize_fetch_error(ConnectionError("connection reset by peer"))

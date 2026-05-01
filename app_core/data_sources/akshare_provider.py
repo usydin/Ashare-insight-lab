@@ -3,10 +3,17 @@ from __future__ import annotations
 from collections.abc import Iterable
 import inspect
 
-import akshare as ak
 import pandas as pd
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ProxyError
+from requests.exceptions import SSLError as RequestsSSLError
+
+try:
+    import akshare as ak
+    AKSHARE_IMPORT_ERROR: BaseException | None = None
+except Exception as error:  # pragma: no cover - import failure depends on runtime env
+    ak = None
+    AKSHARE_IMPORT_ERROR = error
 
 
 DATE_COLUMN_ALIASES = ("date", "日期", "Date", "trade_date", "交易日期")
@@ -18,6 +25,9 @@ def fetch_stock_daily_history(
     timeout_seconds: int = 10,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Fetch raw and normalized daily stock history from AKShare."""
+    if ak is None:
+        raise ImportError(f"akshare import failed: {AKSHARE_IMPORT_ERROR}") from AKSHARE_IMPORT_ERROR
+
     request_kwargs = {
         "symbol": symbol,
         "period": "daily",
@@ -68,6 +78,17 @@ def summarize_fetch_error(error: BaseException, timeout_seconds: int = 10) -> st
         return "RemoteDisconnected: remote end closed connection"
     if error_type == "RemoteDisconnected":
         return "RemoteDisconnected: remote end closed connection"
+    if (
+        isinstance(error, RequestsSSLError)
+        or error_type == "SSLError"
+        or "sslerror" in lowered_message
+        or "record layer failure" in lowered_message
+        or "[ssl]" in lowered_message
+        or " ssl " in f" {lowered_message} "
+    ):
+        if "record layer failure" in lowered_message:
+            return "SSLError: SSL record layer failure"
+        return "SSLError: ssl connection failed"
     if error_type in {"ReadTimeout", "ConnectTimeout", "TimeoutError"} or "timed out" in lowered_message:
         return f"TimeoutError: request timed out after {timeout_seconds}s"
     if isinstance(error, ProxyError) or error_type == "ProxyError" or "proxy" in lowered_message:
@@ -90,6 +111,14 @@ def summarize_fetch_error(error: BaseException, timeout_seconds: int = 10) -> st
     if short_message:
         return f"UnknownError: {short_message}"
     return "UnknownError: unexpected fetch error"
+
+
+def is_akshare_available() -> bool:
+    return ak is not None
+
+
+def get_akshare_import_error() -> BaseException | None:
+    return AKSHARE_IMPORT_ERROR
 
 
 def _find_column(columns: Iterable[object], aliases: tuple[str, ...]) -> str | None:

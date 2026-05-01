@@ -8,6 +8,11 @@
   "network": {
     "request_timeout_seconds": 10
   },
+  "diagnostics": {
+    "enabled": true,
+    "default_test_symbol": "000001",
+    "health_report_dir": "reports/health"
+  },
   "storage": {
     "data_dir": "data",
     "raw_dir": "data/raw",

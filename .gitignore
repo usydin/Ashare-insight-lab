@@ -23,8 +23,10 @@ data/sim/*
 # Reports
 reports/daily/*
 reports/weekly/*
+reports/health/*
 !reports/daily/.gitkeep
 !reports/weekly/.gitkeep
+!reports/health/.gitkeep
 
 # IDE
 .vscode/
