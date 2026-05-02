@@ -105,8 +105,29 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         "load_json",
         lambda _: {
             "watchlist": [
-                {"code": "000001", "name": "平安银行", "market": "SZ", "industry": "银行", "enabled": True},
-                {"code": "600519", "name": "贵州茅台", "market": "SH", "industry": "白酒", "enabled": True},
+                {
+                    "code": "000001",
+                    "name": "平安银行",
+                    "market": "SZ",
+                    "industry": "银行",
+                    "sector": "银行",
+                    "board": "主板",
+                    "tags": ["核心观察", "高股息"],
+                    "priority": "P1",
+                    "position_status": "holding_candidate",
+                    "observe_reason": "用于测试字段增强",
+                    "risk_note": "息差风险",
+                    "data_source": "akshare",
+                    "enabled": True,
+                },
+                {
+                    "code": "600519",
+                    "name": "贵州茅台",
+                    "market": "SH",
+                    "industry": "白酒",
+                    "sector": "白酒",
+                    "enabled": True,
+                },
             ]
         },
     )
@@ -125,20 +146,45 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert result == 0
     assert fetch_timeouts == [8, 8]
     assert len(processed_dataframe) == 2
-    assert {"fetch_time", "raw_file_path", "latest_trade_date", "signal_level"}.issubset(
+    assert {
+        "fetch_time",
+        "raw_file_path",
+        "latest_trade_date",
+        "signal_level",
+        "sector",
+        "board",
+        "tags",
+        "priority",
+        "position_status",
+        "observe_reason",
+        "risk_note",
+        "data_source",
+    }.issubset(
         set(processed_dataframe.columns)
     )
     assert success_row["latest_trade_date"] == "2024-01-25"
     assert success_row["signal_level"] == "positive"
     assert success_row["raw_file_path"] == "000001_daily_raw.csv"
+    assert success_row["sector"] == "银行"
+    assert success_row["board"] == "主板"
+    assert success_row["tags"] == "核心观察,高股息"
+    assert success_row["priority"] == "P1"
+    assert success_row["position_status"] == "holding_candidate"
+    assert success_row["observe_reason"] == "用于测试字段增强"
+    assert success_row["risk_note"] == "息差风险"
+    assert success_row["data_source"] == "akshare"
     assert success_row["fetch_time"]
     assert failed_row["data_status"] == "fetch_failed"
     assert failed_row["error_message"] == "ProxyError: unable to connect to proxy"
     assert failed_row["signal_level"] == "unavailable"
     assert failed_row["raw_file_path"] == ""
+    assert failed_row["sector"] == "白酒"
+    assert failed_row["priority"] == "P3"
+    assert failed_row["position_status"] == "watch"
+    assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.1.4 run-daily",
+            "stage_name": "V0.2.1 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
@@ -152,7 +198,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         for message in logger.infos
     )
     assert any(
-            "run-daily started app=AShare Insight Lab version=0.1.4 environment=development developer=pL enabled_symbols=2 request_timeout=8s"
+            "run-daily started app=AShare Insight Lab version=0.2.1 environment=development developer=pL enabled_symbols=2 request_timeout=8s"
             == message
             for message in logger.infos
         )

@@ -6,15 +6,15 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 本项目当前作为开发骨架使用，目标是先建立清晰、可维护、可验证的目录结构、配置方式与文档体系，为后续 `run-daily` 和策略模块开发打基础。
 
-当前 `run-daily` 已具备基础数据采集、均线信号、日报输出和失败不中断能力。
+当前 `run-daily` 已具备基础数据采集、均线信号、日报输出和失败不中断能力，并已支持更丰富的 watchlist 元信息字段。
 当前项目已加入统一项目元信息管理，开发者为 pL，版权品牌为 @B‘lock10STUdio。
 当前项目已新增 `check-data-source` / `doctor` 命令，用于检查 AKShare、代理环境与示例股票采集状态。
 
 ## 当前阶段
 
-- 阶段名称：`V0.1.7 三项目融合路线总览`
-- 当前目标：把 TradingAgents、FinceptTerminal、MiroFish 三项研究结论收敛为 A 股智研台自己的长期架构、模块分层、阶段路线与安全边界
-- 当前边界：不复制第三方源码、不引入新依赖、不做 GUI、不做模拟盘代码、不做 OpenClaw 代码、不做 Scenario Lab 代码、不做实盘交易、不复刻视觉风格与 trade dress
+- 阶段名称：`V0.2.1 Watchlist 扩展与字段增强`
+- 当前目标：增强 `config/watchlist.json` 的自选股配置能力，并让 `run-daily` / 日报输出更丰富的元信息字段
+- 当前边界：不引入新依赖、不做模拟盘代码、不做 AI Agent 代码、不做 GUI、不做 OpenClaw、不做实盘交易、不自动下单
 
 ## 开发机与部署机分离方案
 
@@ -177,16 +177,6 @@ ashare-insight-lab/
 
 阶段目标强调“研究与验证”，不强调“自动执行交易”。
 
-## 长期架构方向
-
-当前已完成对三个第三方开源项目的研究收敛，形成了 A股智研台的长期架构蓝图。详细架构文档见 `docs/architecture/`：
-
-- **[A股智研台长期架构总览](docs/architecture/A股智研台长期架构总览.md)**
-- **[模块分层与职责边界](docs/architecture/模块分层与职责边界.md)**
-- **[三项目融合路线图](docs/architecture/三项目融合路线图.md)**
-- **[V0.2 功能路线说明](docs/architecture/V0.2功能路线说明.md)**
-- **[安全边界与许可证总原则](docs/architecture/安全边界与许可证总原则.md)**
-
 ## 运行方式
 
 ### 1. 准备环境
@@ -223,7 +213,7 @@ python app.py
 - 版权
 - 仓库地址
 - 安全提醒
-- `V0.1.4 TradingAgents source research is ready.`
+- `V0.2.1 Watchlist enhancement is ready.`
 
 ### 3. 查看版本与项目信息
 

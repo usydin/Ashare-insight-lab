@@ -19,7 +19,7 @@ def render_daily_report(
     records: list[dict[str, Any]],
     generated_at: str | None = None,
     *,
-    stage_name: str = "V0.1.3 run-daily",
+    stage_name: str = "V0.2.1 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -49,24 +49,36 @@ def render_daily_report(
         f"- neutral 数量：{summary['neutral_count']}",
         f"- insufficient_data 数量：{summary['insufficient_data_count']}",
         "",
+        "### 优先级与信号小结",
+        "",
+        f"- P1 观察数量：{summary['priority_p1_count']}",
+        f"- P2 观察数量：{summary['priority_p2_count']}",
+        f"- P3 观察数量：{summary['priority_p3_count']}",
+        f"- positive 数量：{summary['positive_count']}",
+        f"- negative 数量：{summary['negative_count']}",
+        f"- neutral(signal_level) 数量：{summary['signal_level_neutral_count']}",
+        f"- unavailable 数量：{summary['unavailable_count']}",
+        f"- fetch_failed 数量：{summary['fetch_failed_count']}",
+        "",
         "## 自选股信号表",
         "",
-        "| code | name | latest_trade_date | close | ma5 | ma20 | signal | signal_level | data_status | reason |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| code | name | sector | priority | position_status | latest_trade_date | close | signal | signal_level | data_status | reason |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
 
     for record in records:
         lines.append(
             (
-                "| {code} | {name} | {latest_trade_date} | {close} | {ma5} | {ma20} | "
-                "{signal} | {signal_level} | {data_status} | {reason} |"
+                "| {code} | {name} | {sector} | {priority} | {position_status} | {latest_trade_date} | "
+                "{close} | {signal} | {signal_level} | {data_status} | {reason} |"
             ).format(
                 code=record.get("code", ""),
                 name=record.get("name", ""),
+                sector=_display_value(record.get("sector")),
+                priority=_display_value(record.get("priority")),
+                position_status=_display_value(record.get("position_status")),
                 latest_trade_date=_display_value(record.get("latest_trade_date")),
                 close=_display_value(record.get("close")),
-                ma5=_display_value(record.get("ma5")),
-                ma20=_display_value(record.get("ma20")),
                 signal=record.get("signal", ""),
                 signal_level=record.get("signal_level", ""),
                 data_status=record.get("data_status", ""),
@@ -116,7 +128,7 @@ def write_daily_report(
     report_date: str | None = None,
     generated_at: str | None = None,
     output_path: str | Path | None = None,
-    stage_name: str = "V0.1.3 run-daily",
+    stage_name: str = "V0.2.1 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -155,6 +167,15 @@ def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
         if record.get("signal") == "neutral" and record.get("data_status") == "ok"
     )
     success_count = total_count - failed_count
+    priority_p1_count = sum(1 for record in records if record.get("priority") == "P1")
+    priority_p2_count = sum(1 for record in records if record.get("priority") == "P2")
+    priority_p3_count = sum(1 for record in records if record.get("priority") == "P3")
+    positive_count = sum(1 for record in records if record.get("signal_level") == "positive")
+    negative_count = sum(1 for record in records if record.get("signal_level") == "negative")
+    signal_level_neutral_count = sum(
+        1 for record in records if record.get("signal_level") == "neutral"
+    )
+    unavailable_count = sum(1 for record in records if record.get("signal_level") == "unavailable")
 
     return {
         "total_count": total_count,
@@ -164,6 +185,14 @@ def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
         "trend_down_count": trend_down_count,
         "neutral_count": neutral_count,
         "insufficient_data_count": insufficient_data_count,
+        "priority_p1_count": priority_p1_count,
+        "priority_p2_count": priority_p2_count,
+        "priority_p3_count": priority_p3_count,
+        "positive_count": positive_count,
+        "negative_count": negative_count,
+        "signal_level_neutral_count": signal_level_neutral_count,
+        "unavailable_count": unavailable_count,
+        "fetch_failed_count": failed_count,
     }
 
 

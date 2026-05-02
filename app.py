@@ -30,6 +30,7 @@ from app_core.project_info import (
 from app_core.reports.daily_report import write_daily_report
 from app_core.storage.file_store import ensure_directory, save_dataframe_csv
 from app_core.strategies.ma_strategy import analyze_ma_signal
+from app_core.watchlist import get_enabled_watchlist, load_watchlist_items, tags_to_csv_value
 
 
 def print_app_info() -> None:
@@ -47,7 +48,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.1.3 data source health diagnostics is ready.")
+    print("提示: V0.2.1 watchlist enhancement is ready.")
 
 
 def print_version_info() -> None:
@@ -109,8 +110,8 @@ def run_daily() -> int:
         ensure_directory("reports/daily")
         ensure_directory(log_dir)
 
-        all_watchlist_items = watchlist_config.get("watchlist", [])
-        enabled_items = [item for item in all_watchlist_items if item.get("enabled") is True]
+        all_watchlist_items = load_watchlist_items(watchlist_config)
+        enabled_items = get_enabled_watchlist(all_watchlist_items)
 
         logger.info(
             "run-daily started app=%s version=%s environment=%s developer=%s enabled_symbols=%s request_timeout=%ss",
@@ -125,10 +126,11 @@ def run_daily() -> int:
         records: list[dict[str, Any]] = []
 
         for item in enabled_items:
-            code = str(item.get("code", "")).strip()
+            code = item["code"]
             name = item.get("name", "")
             fetch_time = datetime.now().isoformat(timespec="seconds")
             logger.info("data collection started for %s %s", code, name)
+            metadata = _build_watchlist_metadata(item)
 
             try:
                 raw_dataframe, normalized_dataframe = fetch_stock_daily_history(
@@ -143,13 +145,12 @@ def run_daily() -> int:
 
                 strategy_result = analyze_ma_signal(normalized_dataframe)
                 record = {
+                    **metadata,
                     "fetch_time": fetch_time,
                     "date": strategy_result["date"],
                     "latest_trade_date": strategy_result["date"],
                     "code": code,
                     "name": name,
-                    "market": item.get("market", ""),
-                    "industry": item.get("industry", ""),
                     "close": strategy_result["close"],
                     "ma5": strategy_result["ma5"],
                     "ma20": strategy_result["ma20"],
@@ -172,13 +173,12 @@ def run_daily() -> int:
                 message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
                 records.append(
                     {
+                        **metadata,
                         "fetch_time": fetch_time,
                         "date": "",
                         "latest_trade_date": "",
                         "code": code,
                         "name": name,
-                        "market": item.get("market", ""),
-                        "industry": item.get("industry", ""),
                         "close": None,
                         "ma5": None,
                         "ma20": None,
@@ -204,6 +204,14 @@ def run_daily() -> int:
                 "name",
                 "market",
                 "industry",
+                "sector",
+                "board",
+                "tags",
+                "priority",
+                "position_status",
+                "observe_reason",
+                "risk_note",
+                "data_source",
                 "close",
                 "ma5",
                 "ma20",
@@ -225,7 +233,7 @@ def run_daily() -> int:
             records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.1.4 run-daily",
+            stage_name="V0.2.1 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -290,6 +298,21 @@ def _determine_signal_level(signal: str, data_status: str) -> str:
     if signal == "trend_down":
         return "negative"
     return "neutral"
+
+
+def _build_watchlist_metadata(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "market": item.get("market", ""),
+        "industry": item.get("industry", ""),
+        "sector": item.get("sector", ""),
+        "board": item.get("board", ""),
+        "tags": tags_to_csv_value(item.get("tags", [])),
+        "priority": item.get("priority", ""),
+        "position_status": item.get("position_status", ""),
+        "observe_reason": item.get("observe_reason", ""),
+        "risk_note": item.get("risk_note", ""),
+        "data_source": item.get("data_source", ""),
+    }
 
 
 def _to_relative_path(path: str | Path) -> str:

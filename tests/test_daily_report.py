@@ -11,6 +11,9 @@ def test_render_daily_report_contains_key_sections() -> None:
             "latest_trade_date": "2024-01-31",
             "code": "000001",
             "name": "平安银行",
+            "sector": "银行",
+            "priority": "P1",
+            "position_status": "watch",
             "close": 12.34,
             "ma5": 12.1,
             "ma20": 11.8,
@@ -27,6 +30,9 @@ def test_render_daily_report_contains_key_sections() -> None:
             "latest_trade_date": "",
             "code": "600519",
             "name": "贵州茅台",
+            "sector": "白酒",
+            "priority": "P3",
+            "position_status": "watch",
             "close": None,
             "ma5": None,
             "ma20": None,
@@ -49,15 +55,20 @@ def test_render_daily_report_contains_key_sections() -> None:
 
     assert "A股智研台每日观察报告" in content
     assert "A股智研台 / AShare Insight Lab" in content
-    assert "当前版本：0.1.4" in content
+    assert "当前版本：0.2.1" in content
     assert "开发维护：pL" in content
     assert "Copyright © 2026 @B‘lock10STUdio. All rights reserved." in content
-    assert "V0.1.3 run-daily" in content
+    assert "V0.2.1 run-daily" in content
     assert "平安银行" in content
     assert "## 本次执行摘要" in content
     assert "成功采集数量：1" in content
     assert "失败数量：1" in content
     assert "signal_level" in content
+    assert "P1 观察数量：1" in content
+    assert "P3 观察数量：1" in content
+    assert "positive 数量：1" in content
+    assert "fetch_failed 数量：1" in content
+    assert "| 000001 | 平安银行 | 银行 | P1 | watch | 2024-01-31 | 12.34 | trend_up | positive | ok | close > ma5 且 close > ma20 |" in content
     assert "processed CSV 路径" in content
     assert "ProxyError: unable to connect to proxy" in content
     assert "Traceback (most recent call last)" not in content
@@ -71,6 +82,9 @@ def test_write_daily_report_creates_markdown_file(tmp_path: Path) -> None:
             "latest_trade_date": "2024-01-31",
             "code": "600519",
             "name": "贵州茅台",
+            "sector": "白酒",
+            "priority": "P1",
+            "position_status": "watch",
             "close": 1688.0,
             "ma5": 1660.0,
             "ma20": 1600.0,
