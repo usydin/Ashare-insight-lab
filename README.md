@@ -12,9 +12,9 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.1.6 MiroFish 多智能体情景推演研究`
-- 当前目标：研究 MiroFish 的情景推演流程、五阶段产品路径与多角色社会模拟边界，并补充 A 股智研台长期 Scenario Lab 研究路线
-- 当前边界：不复制第三方源码、不引入新依赖、不做 GUI、不做模拟盘代码、不做 OpenClaw 代码、不做实盘交易、不复刻视觉风格与 trade dress
+- 阶段名称：`V0.1.7 三项目融合路线总览`
+- 当前目标：把 TradingAgents、FinceptTerminal、MiroFish 三项研究结论收敛为 A 股智研台自己的长期架构、模块分层、阶段路线与安全边界
+- 当前边界：不复制第三方源码、不引入新依赖、不做 GUI、不做模拟盘代码、不做 OpenClaw 代码、不做 Scenario Lab 代码、不做实盘交易、不复刻视觉风格与 trade dress
 
 ## 开发机与部署机分离方案
 
@@ -85,6 +85,18 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 - **不复刻 Trade Dress**：不模仿 FinceptTerminal、MiroFish 的界面、视觉风格、终端命令、快捷键及专有词汇。
 - **不引入重依赖**：不引入 LangGraph、Backtrader、Qt6、Redis、Node.js、Vue、Flask、Zep、OASIS、Docker 等。
 - **保持版权独立**：本项目自有版权仍为 Copyright © 2026 @B‘lock10STUdio。
+
+## 长期架构方向
+
+三项目研究阶段已正式收敛到 `docs/architecture/` 下的长期架构文档，作为后续 V0.2 及更长期迭代的统一参考入口。
+
+建议优先阅读：
+
+- `docs/architecture/A股智研台长期架构总览.md`
+- `docs/architecture/模块分层与职责边界.md`
+- `docs/architecture/三项目融合路线图.md`
+- `docs/architecture/V0.2功能路线说明.md`
+- `docs/architecture/安全边界与许可证总原则.md`
 
 ## OpenClaw 接入定位
 
@@ -164,6 +176,16 @@ ashare-insight-lab/
 5. 复盘报告整理
 
 阶段目标强调“研究与验证”，不强调“自动执行交易”。
+
+## 长期架构方向
+
+当前已完成对三个第三方开源项目的研究收敛，形成了 A股智研台的长期架构蓝图。详细架构文档见 `docs/architecture/`：
+
+- **[A股智研台长期架构总览](docs/architecture/A股智研台长期架构总览.md)**
+- **[模块分层与职责边界](docs/architecture/模块分层与职责边界.md)**
+- **[三项目融合路线图](docs/architecture/三项目融合路线图.md)**
+- **[V0.2 功能路线说明](docs/architecture/V0.2功能路线说明.md)**
+- **[安全边界与许可证总原则](docs/architecture/安全边界与许可证总原则.md)**
 
 ## 运行方式
 
