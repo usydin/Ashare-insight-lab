@@ -225,7 +225,7 @@ def run_daily() -> int:
             records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.1.3 run-daily",
+            stage_name="V0.1.4 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,

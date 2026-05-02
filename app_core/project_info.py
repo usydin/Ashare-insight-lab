@@ -1,6 +1,6 @@
 APP_NAME_CN = "A股智研台"
 APP_NAME_EN = "AShare Insight Lab"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 STAGE = "dev"
 DEVELOPER = "pL"
 MAINTAINER = "pL"

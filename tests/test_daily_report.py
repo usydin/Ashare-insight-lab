@@ -49,7 +49,7 @@ def test_render_daily_report_contains_key_sections() -> None:
 
     assert "A股智研台每日观察报告" in content
     assert "A股智研台 / AShare Insight Lab" in content
-    assert "当前版本：0.1.3" in content
+    assert "当前版本：0.1.4" in content
     assert "开发维护：pL" in content
     assert "Copyright © 2026 @B‘lock10STUdio. All rights reserved." in content
     assert "V0.1.3 run-daily" in content

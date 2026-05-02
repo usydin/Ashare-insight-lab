@@ -12,9 +12,9 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.1.3 数据源健康检查与网络诊断`
-- 当前目标：补充数据源健康检查、代理环境诊断与 Markdown 健康报告输出
-- 当前边界：不实现模拟盘、不接入实盘交易、不引入自动下单能力
+- 阶段名称：`V0.1.6 MiroFish 多智能体情景推演研究`
+- 当前目标：研究 MiroFish 的情景推演流程、五阶段产品路径与多角色社会模拟边界，并补充 A 股智研台长期 Scenario Lab 研究路线
+- 当前边界：不复制第三方源码、不引入新依赖、不做 GUI、不做模拟盘代码、不做 OpenClaw 代码、不做实盘交易、不复刻视觉风格与 trade dress
 
 ## 开发机与部署机分离方案
 
@@ -65,6 +65,26 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 - 诊断命令：`python app.py check-data-source` / `python app.py doctor`
 
 本阶段不引入复杂框架，不做过度封装，以清晰目录和明确职责为主。
+
+## 开源项目研究与借鉴
+
+当前已完成对三个第三方开源项目的深度研究梳理，详细文档见 `docs/research/`：
+
+- **TradingAgents**
+  - 研究重点：多智能体投研流程、角色分层、结构化输出、决策记忆与风控审查思路。
+  - 借鉴价值：AI 多智能体投研大脑。
+- **FinceptTerminal**
+  - 研究重点：金融终端产品形态、模块组织、DataHub 思路、数据连接器体系与工作台规划方式。
+  - 借鉴价值：金融终端产品外壳与平台组织方式。
+- **MiroFish**
+  - 研究重点：多智能体情景推演、五阶段实验流程、事件传播模拟与研究边界。
+  - 借鉴价值：情景推演沙盒与 Scenario Lab 设计思路。
+
+核心约束：
+- **不复制源码**：严禁复制任何第三方 C++ 或 Python 源码。
+- **不复刻 Trade Dress**：不模仿 FinceptTerminal、MiroFish 的界面、视觉风格、终端命令、快捷键及专有词汇。
+- **不引入重依赖**：不引入 LangGraph、Backtrader、Qt6、Redis、Node.js、Vue、Flask、Zep、OASIS、Docker 等。
+- **保持版权独立**：本项目自有版权仍为 Copyright © 2026 @B‘lock10STUdio。
 
 ## OpenClaw 接入定位
 
@@ -181,7 +201,7 @@ python app.py
 - 版权
 - 仓库地址
 - 安全提醒
-- `V0.1.3 data source health diagnostics is ready.`
+- `V0.1.4 TradingAgents source research is ready.`
 
 ### 3. 查看版本与项目信息
 
