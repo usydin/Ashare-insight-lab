@@ -17,9 +17,10 @@ from app_core.storage.file_store import write_text_file
 
 def render_daily_report(
     records: list[dict[str, Any]],
+    index_records: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
     *,
-    stage_name: str = "V0.2.1 run-daily",
+    stage_name: str = "V0.2.2 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -60,11 +61,40 @@ def render_daily_report(
         f"- unavailable 数量：{summary['unavailable_count']}",
         f"- fetch_failed 数量：{summary['fetch_failed_count']}",
         "",
-        "## 自选股信号表",
+        "## 市场指数观察",
         "",
-        "| code | name | sector | priority | position_status | latest_trade_date | close | signal | signal_level | data_status | reason |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| symbol | name | category | date | close | signal | signal_level | data_status |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
+
+    if index_records:
+        for idx in index_records:
+            lines.append(
+                (
+                    "| {symbol} | {name} | {category} | {date} | {close} | {signal} | {signal_level} | {data_status} |"
+                ).format(
+                    symbol=idx.get("symbol", ""),
+                    name=idx.get("name", ""),
+                    category=idx.get("category", ""),
+                    date=_display_value(idx.get("date")),
+                    close=_display_value(idx.get("close")),
+                    signal=idx.get("signal", ""),
+                    signal_level=idx.get("signal_level", ""),
+                    data_status=idx.get("data_status", ""),
+                )
+            )
+    else:
+        lines.append("| - | - | - | - | - | - | - | - |")
+
+    lines.extend(
+        [
+            "",
+            "## 自选股信号表",
+            "",
+            "| code | name | sector | priority | position_status | latest_trade_date | close | signal | signal_level | data_status | reason |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
 
     for record in records:
         lines.append(
@@ -124,11 +154,12 @@ def render_daily_report(
 
 def write_daily_report(
     records: list[dict[str, Any]],
+    index_records: list[dict[str, Any]] | None = None,
     *,
     report_date: str | None = None,
     generated_at: str | None = None,
     output_path: str | Path | None = None,
-    stage_name: str = "V0.2.1 run-daily",
+    stage_name: str = "V0.2.2 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -138,6 +169,7 @@ def write_daily_report(
     relative_output_path = Path(output_path or f"reports/daily/{report_date}_daily_report.md")
     content = render_daily_report(
         records,
+        index_records=index_records,
         generated_at=generated_at,
         stage_name=stage_name,
         processed_csv_path=processed_csv_path,

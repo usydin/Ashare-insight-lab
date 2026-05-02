@@ -47,6 +47,18 @@ def test_render_daily_report_contains_key_sections() -> None:
 
     content = render_daily_report(
         records,
+        index_records=[
+            {
+                "symbol": "sh000001",
+                "name": "上证指数",
+                "category": "宽基指数",
+                "date": "2024-01-31",
+                "close": 3000.0,
+                "signal": "trend_up",
+                "signal_level": "positive",
+                "data_status": "ok",
+            }
+        ],
         generated_at="2024-01-31T18:00:00",
         processed_csv_path="data/processed/daily_signals.csv",
         raw_data_dir="data/raw",
@@ -55,10 +67,12 @@ def test_render_daily_report_contains_key_sections() -> None:
 
     assert "A股智研台每日观察报告" in content
     assert "A股智研台 / AShare Insight Lab" in content
-    assert "当前版本：0.2.1" in content
+    assert "当前版本：0.2.2" in content
     assert "开发维护：pL" in content
     assert "Copyright © 2026 @B‘lock10STUdio. All rights reserved." in content
-    assert "V0.2.1 run-daily" in content
+    assert "V0.2.2 run-daily" in content
+    assert "## 市场指数观察" in content
+    assert "| sh000001 | 上证指数 | 宽基指数 | 2024-01-31 | 3000.0 | trend_up | positive | ok |" in content
     assert "平安银行" in content
     assert "## 本次执行摘要" in content
     assert "成功采集数量：1" in content

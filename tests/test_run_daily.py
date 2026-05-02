@@ -66,16 +66,17 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
 
     def fake_write_daily_report(
         records: list[dict[str, object]],
+        index_records: list[dict[str, object]] | None = None,
         *,
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.1.4 run-daily",
+        stage_name: str = "V0.2.2 run-daily",
         processed_csv_path: str = "data/processed/daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
     ) -> Path:
-        del report_date, generated_at, output_path
+        del index_records, report_date, generated_at, output_path
         report_records.extend(records)
         report_kwargs.update(
             {
@@ -131,7 +132,13 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
             ]
         },
     )
+    monkeypatch.setattr(
+        app,
+        "load_market_indices",
+        lambda _: []
+    )
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
+    monkeypatch.setattr(app, "load_market_indices", lambda _: [])
     monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
     monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
     monkeypatch.setattr(app, "write_daily_report", fake_write_daily_report)
@@ -184,7 +191,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.2.1 run-daily",
+            "stage_name": "V0.2.2 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
@@ -198,7 +205,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         for message in logger.infos
     )
     assert any(
-            "run-daily started app=AShare Insight Lab version=0.2.1 environment=development developer=pL enabled_symbols=2 request_timeout=8s"
+            "run-daily: processing 2 watchlist items"
             == message
             for message in logger.infos
         )
@@ -238,6 +245,7 @@ def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) ->
         },
     )
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
+    monkeypatch.setattr(app, "load_market_indices", lambda _: [])
     monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
     monkeypatch.setattr(
         app,

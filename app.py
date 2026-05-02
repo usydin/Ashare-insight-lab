@@ -13,7 +13,12 @@ from app_core.data_sources.akshare_provider import (
     fetch_stock_daily_history,
     summarize_fetch_error,
 )
+from app_core.data_sources.index_provider import fetch_index_daily_history
 from app_core.diagnostics.data_source_health import run_data_source_health_check
+from app_core.market_indices import (
+    get_enabled_market_indices,
+    load_market_indices,
+)
 from app_core.path_utils import get_project_root
 from app_core.project_info import (
     APP_NAME_CN,
@@ -48,7 +53,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.2.1 watchlist enhancement is ready.")
+    print("提示: V0.2.2 market indices integration is ready.")
 
 
 def print_version_info() -> None:
@@ -95,6 +100,8 @@ def run_daily() -> int:
     try:
         settings = load_settings()
         watchlist_config = load_json("config/watchlist.json")
+        market_indices_config = load_market_indices("config/market_indices.json")
+
         run_started_at = datetime.now()
         generated_at = run_started_at.isoformat(timespec="seconds")
         report_date = run_started_at.strftime("%Y-%m-%d")
@@ -110,20 +117,71 @@ def run_daily() -> int:
         ensure_directory("reports/daily")
         ensure_directory(log_dir)
 
+        # 1. 处理市场指数
+        enabled_indices = get_enabled_market_indices(market_indices_config)
+        logger.info("run-daily: processing %d market indices", len(enabled_indices))
+        index_records: list[dict[str, Any]] = []
+
+        for item in enabled_indices:
+            symbol = item["symbol"]
+            name = item["name"]
+            fetch_time = datetime.now().isoformat(timespec="seconds")
+            metadata = _build_index_metadata(item)
+
+            try:
+                raw_dataframe, normalized_dataframe = fetch_index_daily_history(
+                    symbol, timeout_seconds=timeout_seconds
+                )
+                save_dataframe_csv(raw_dataframe, Path(raw_dir) / f"{symbol}_index_raw.csv")
+
+                strategy_result = analyze_ma_signal(normalized_dataframe)
+                record = {
+                    **metadata,
+                    "fetch_time": fetch_time,
+                    "date": strategy_result["date"],
+                    "close": strategy_result["close"],
+                    "ma5": strategy_result["ma5"],
+                    "ma20": strategy_result["ma20"],
+                    "signal": strategy_result["signal"],
+                    "signal_level": _determine_signal_level(
+                        strategy_result["signal"], strategy_result["data_status"]
+                    ),
+                    "data_status": strategy_result["data_status"],
+                    "error_message": strategy_result["error_message"],
+                }
+                index_records.append(record)
+            except Exception as error:
+                message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
+                index_records.append(
+                    {
+                        **metadata,
+                        "fetch_time": fetch_time,
+                        "date": "",
+                        "close": None,
+                        "ma5": None,
+                        "ma20": None,
+                        "signal": "neutral",
+                        "signal_level": "unavailable",
+                        "data_status": "fetch_failed",
+                        "error_message": message,
+                    }
+                )
+
+        # 保存指数结果
+        if index_records:
+            index_df = pd.DataFrame(index_records)
+            save_dataframe_csv(index_df, Path(processed_dir) / "index_signals.csv")
+
+        # 2. 处理自选股
         all_watchlist_items = load_watchlist_items(watchlist_config)
         enabled_items = get_enabled_watchlist(all_watchlist_items)
 
         logger.info(
-            "run-daily started app=%s version=%s environment=%s developer=%s enabled_symbols=%s request_timeout=%ss",
-            APP_NAME_EN,
-            VERSION,
-            environment,
-            DEVELOPER,
+            "run-daily: processing %d watchlist items",
             len(enabled_items),
-            timeout_seconds,
         )
 
-        records: list[dict[str, Any]] = []
+        watchlist_records: list[dict[str, Any]] = []
 
         for item in enabled_items:
             code = item["code"]
@@ -165,13 +223,13 @@ def run_daily() -> int:
                     "raw_file": raw_relative_path,
                     "raw_file_path": raw_relative_path,
                 }
-                records.append(record)
+                watchlist_records.append(record)
                 logger.info("data collection succeeded for %s %s", code, name)
             except KeyboardInterrupt:
                 raise
             except Exception as error:  # pragma: no cover - network/runtime branch
                 message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
-                records.append(
+                watchlist_records.append(
                     {
                         **metadata,
                         "fetch_time": fetch_time,
@@ -193,9 +251,9 @@ def run_daily() -> int:
                 )
                 logger.exception("data collection failed for %s %s: %s", code, name, message)
 
-        summary = summarize_run_daily_records(records)
+        summary = summarize_run_daily_records(watchlist_records)
         processed_dataframe = pd.DataFrame(
-            records,
+            watchlist_records,
             columns=[
                 "fetch_time",
                 "date",
@@ -230,10 +288,11 @@ def run_daily() -> int:
             Path(processed_dir) / "daily_signals.csv",
         )
         report_path = write_daily_report(
-            records,
+            watchlist_records,
+            index_records=index_records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.2.1 run-daily",
+            stage_name="V0.2.2 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -252,6 +311,7 @@ def run_daily() -> int:
         logger.info("run-daily finished")
 
         print("run-daily 执行完成")
+        print(f"已处理指数数: {len(enabled_indices)}")
         print(f"已处理股票数: {len(enabled_items)}")
         print(f"处理后数据: {processed_path}")
         print(f"日报路径: {report_path}")
@@ -298,6 +358,14 @@ def _determine_signal_level(signal: str, data_status: str) -> str:
     if signal == "trend_down":
         return "negative"
     return "neutral"
+
+
+def _build_index_metadata(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "symbol": item.get("symbol", ""),
+        "name": item.get("name", ""),
+        "category": item.get("category", ""),
+    }
 
 
 def _build_watchlist_metadata(item: dict[str, Any]) -> dict[str, Any]:

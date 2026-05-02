@@ -1,0 +1,44 @@
+[
+    {
+        "symbol": "sh000001",
+        "name": "上证指数",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sz399001",
+        "name": "深证成指",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sz399006",
+        "name": "创业板指",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sh000300",
+        "name": "沪深300",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sh000905",
+        "name": "中证500",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sh000852",
+        "name": "中证1000",
+        "category": "宽基指数",
+        "enabled": true
+    },
+    {
+        "symbol": "sh000688",
+        "name": "科创50",
+        "category": "宽基指数",
+        "enabled": true
+    }
+]
