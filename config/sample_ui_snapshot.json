@@ -1,0 +1,86 @@
+{
+  "app": {
+    "name_cn": "A股智研台",
+    "name_en": "AShare Insight Lab",
+    "version": "0.3.5",
+    "stage": "Frontend Snapshot Schema Guard",
+    "developer": "pL",
+    "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
+  },
+  "generated_at": "2026-05-03T13:30:00",
+  "latest_run": {
+    "id": 1,
+    "run_date": "2026-05-03",
+    "status": "success",
+    "index_count": 1,
+    "sector_count": 1,
+    "stock_count": 1,
+    "report_path": "reports/daily/2026-05-03_daily_report.md"
+  },
+  "dashboard_summary": {
+    "signal_overview": {
+      "index": {
+        "bullish": 0,
+        "bearish": 0,
+        "neutral": 1
+      },
+      "sector": {
+        "bullish": 1,
+        "bearish": 0,
+        "neutral": 0
+      },
+      "stock": {
+        "bullish": 0,
+        "bearish": 1,
+        "neutral": 0
+      }
+    }
+  },
+  "review_queue": {
+    "count": 1,
+    "high_count": 1,
+    "medium_count": 0,
+    "low_count": 0,
+    "items": [
+      {
+        "rank": 1,
+        "asset_type": "stock",
+        "symbol": "600519",
+        "name": "贵州茅台",
+        "priority": "high",
+        "severity": "high",
+        "category": "signal_change",
+        "reason": "信号从 neutral 变为 bearish",
+        "latest_signal": "bearish",
+        "suggested_action": "复核信号变化并查看最近数据",
+        "source": "changes"
+      }
+    ]
+  },
+  "signal_changes": {
+    "latest_run_id": 1,
+    "previous_run_id": null,
+    "summary": {
+      "index_change_count": 0,
+      "sector_change_count": 0,
+      "stock_change_count": 1
+    },
+    "top_changes": []
+  },
+  "data_health": {
+    "ok_count": 3,
+    "risk_item_count": 0
+  },
+  "paths": {
+    "database": "data/history/ashare_insight_lab.sqlite3",
+    "daily_report": "reports/daily/2026-05-03_daily_report.md",
+    "dashboard_summary_json": "data/processed/dashboard_summary.json",
+    "review_queue_json": "data/processed/review_queue.json",
+    "review_queue_csv": "data/processed/review_queue.csv",
+    "signal_changes_csv": "data/processed/signal_changes.csv",
+    "ui_snapshot_json": "data/processed/ui_snapshot.json"
+  },
+  "messages": [
+    "这是一份示例快照数据"
+  ]
+}

@@ -73,7 +73,7 @@ def build_signal_change_summary(
     database_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """对比两次运行并生成信号变化摘要"""
-    if latest_run_id is None:
+    if latest_run_id is None or (latest_run_id is not None and previous_run_id is None):
         pair = get_latest_run_pair(database_path)
         if not pair["latest_run"]:
             return {
@@ -85,8 +85,18 @@ def build_signal_change_summary(
                 "risk_items": [],
                 "summary": _empty_summary()
             }
-        latest_run_id = pair["latest_run"]["id"]
-        previous_run_id = pair["previous_run"]["id"] if pair["previous_run"] else None
+        
+        if latest_run_id is None:
+            latest_run_id = pair["latest_run"]["id"]
+            previous_run_id = pair["previous_run"]["id"] if pair["previous_run"] else None
+        elif previous_run_id is None:
+            # 如果指定了 latest_run_id 但没指定 previous_run_id
+            # 如果 latest_run_id 正好是数据库中最新的，那么 previous 就是 pair["previous_run"]
+            if latest_run_id == pair["latest_run"]["id"]:
+                previous_run_id = pair["previous_run"]["id"] if pair["previous_run"] else None
+            else:
+                # 否则需要去数据库查指定 id 之前的那个成功运行
+                previous_run_id = _find_previous_success_run_id(latest_run_id, database_path)
 
     latest_snapshot = get_run_snapshot(latest_run_id, database_path)
     previous_snapshot = (
@@ -127,6 +137,22 @@ def build_signal_change_summary(
         "risk_items": risk_items,
         "summary": summary
     }
+
+
+def _find_previous_success_run_id(current_run_id: int, database_path: str | Path | None = None) -> int | None:
+    """查找指定 ID 之前的一个成功运行记录 ID"""
+    path = Path(database_path) if database_path else get_default_database_path()
+    if not path.exists():
+        return None
+
+    with sqlite3.connect(path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM daily_runs WHERE id < ? AND status = 'success' ORDER BY id DESC LIMIT 1",
+            (current_run_id,)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
 
 
 def _compare_records(

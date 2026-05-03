@@ -1,0 +1,43 @@
+{
+  "root": [
+    "app",
+    "generated_at",
+    "latest_run",
+    "dashboard_summary",
+    "review_queue",
+    "signal_changes",
+    "data_health",
+    "paths",
+    "messages"
+  ],
+  "app": [
+    "name_cn",
+    "name_en",
+    "version",
+    "stage",
+    "developer",
+    "copyright"
+  ],
+  "paths": [
+    "database",
+    "daily_report",
+    "dashboard_summary_json",
+    "review_queue_json",
+    "review_queue_csv",
+    "signal_changes_csv",
+    "ui_snapshot_json"
+  ],
+  "review_queue": [
+    "count",
+    "high_count",
+    "medium_count",
+    "low_count",
+    "items"
+  ],
+  "signal_changes": [
+    "latest_run_id",
+    "previous_run_id",
+    "summary",
+    "top_changes"
+  ]
+}

@@ -65,18 +65,18 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         return output_path
 
     def fake_write_daily_report(
-            records: list[dict[str, object]],
-            index_records: list[dict[str, object]] | None = None,
-            sector_records: list[dict[str, object]] | None = None,
-            *,
-            report_date: str | None = None,
-            generated_at: str | None = None,
-            output_path: str | Path | None = None,
-            stage_name: str = "V0.3.1 run-daily",
-            processed_csv_path: str = "data/processed/daily_signals.csv",
-            raw_data_dir: str = "data/raw",
-            log_path: str = "logs/app.log",
-        ) -> Path:
+        records: list[dict[str, object]],
+        index_records: list[dict[str, object]] | None = None,
+        sector_records: list[dict[str, object]] | None = None,
+        *,
+        report_date: str | None = None,
+        generated_at: str | None = None,
+        output_path: str | Path | None = None,
+        stage_name: str = "V0.3.1 run-daily",
+        processed_csv_path: str = "data/processed/daily_signals.csv",
+        raw_data_dir: str = "data/raw",
+        log_path: str = "logs/app.log",
+    ) -> Path:
         del index_records, sector_records, report_date, generated_at, output_path
         report_records.extend(records)
         report_kwargs.update(
@@ -97,6 +97,22 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
             "sector_count": 0,
             "stock_count": 0
         }
+    
+    def fake_write_dashboard_summary_json(**kwargs):
+        return Path("fake_dashboard.json")
+    
+    def fake_write_review_queue_outputs(**kwargs):
+        return {
+            "json_path": "fake_review.json",
+            "csv_path": "fake_review.csv",
+            "count": 0
+        }
+    
+    def fake_write_ui_snapshot_json(**kwargs):
+        return Path("fake_ui_snapshot.json")
+    
+    def fake_validate_ui_snapshot(snapshot):
+        return {"is_valid": True, "error_count": 0, "warning_count": 0, "errors": [], "warnings": []}
     
     def fake_build_signal_change_summary(**kwargs):
         return {
@@ -176,6 +192,10 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
     monkeypatch.setattr(app, "write_daily_report", fake_write_daily_report)
     monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
+    monkeypatch.setattr(app, "write_dashboard_summary_json", fake_write_dashboard_summary_json)
+    monkeypatch.setattr(app, "write_review_queue_outputs", fake_write_review_queue_outputs)
+    monkeypatch.setattr(app, "write_ui_snapshot_json", fake_write_ui_snapshot_json)
+    monkeypatch.setattr(app, "validate_ui_snapshot", fake_validate_ui_snapshot)
     monkeypatch.setattr(app, "get_project_root", lambda: tmp_path)
 
     result = app.run_daily()
@@ -333,6 +353,22 @@ def test_run_daily_marks_stale_sector_data(monkeypatch, tmp_path: Path) -> None:
             "stock_count": 0
         }
     
+    def fake_write_dashboard_summary_json(**kwargs):
+        return Path("fake_dashboard.json")
+    
+    def fake_write_review_queue_outputs(**kwargs):
+        return {
+            "json_path": "fake_review.json",
+            "csv_path": "fake_review.csv",
+            "count": 0
+        }
+    
+    def fake_write_ui_snapshot_json(**kwargs):
+        return Path("fake_ui_snapshot.json")
+    
+    def fake_validate_ui_snapshot(snapshot):
+        return {"is_valid": True, "error_count": 0, "warning_count": 0, "errors": [], "warnings": []}
+    
     def fake_build_signal_change_summary(**kwargs):
         return {
             "latest_run_id": 1,
@@ -347,6 +383,10 @@ def test_run_daily_marks_stale_sector_data(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(app, "get_logger", lambda: logger)
     monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
     monkeypatch.setattr(app, "build_signal_change_summary", fake_build_signal_change_summary)
+    monkeypatch.setattr(app, "write_dashboard_summary_json", fake_write_dashboard_summary_json)
+    monkeypatch.setattr(app, "write_review_queue_outputs", fake_write_review_queue_outputs)
+    monkeypatch.setattr(app, "write_ui_snapshot_json", fake_write_ui_snapshot_json)
+    monkeypatch.setattr(app, "validate_ui_snapshot", fake_validate_ui_snapshot)
     monkeypatch.setattr(app, "load_settings", lambda: {
         "storage": {"raw_dir": "raw", "processed_dir": "proc", "log_dir": "logs"},
         "network": {"request_timeout_seconds": 10}

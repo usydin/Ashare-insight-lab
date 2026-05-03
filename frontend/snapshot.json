@@ -1,0 +1,379 @@
+{
+  "app": {
+    "name_cn": "A股智研台",
+    "name_en": "AShare Insight Lab",
+    "version": "0.3.5",
+    "stage": "Frontend Snapshot Schema Guard",
+    "developer": "pL",
+    "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
+  },
+  "generated_at": "2026-05-03T20:35:51",
+  "latest_run": {
+    "id": 10,
+    "run_date": "2026-05-03",
+    "started_at": "2026-05-03T16:23:36",
+    "finished_at": "2026-05-03T16:25:41",
+    "app_version": "0.3.5",
+    "stage": "Frontend Snapshot Schema Guard",
+    "status": "success",
+    "index_count": 7,
+    "sector_count": 7,
+    "stock_count": 3,
+    "report_path": "reports/daily/2026-05-03_daily_report.md",
+    "processed_csv_path": "data/processed/daily_signals.csv",
+    "log_path": "logs/app.log",
+    "created_at": "2026-05-03 16:25:41"
+  },
+  "dashboard_summary": {
+    "app": {
+      "name": "A股智研台",
+      "version": "0.3.5",
+      "stage": "Frontend Snapshot Schema Guard"
+    },
+    "latest_run": {
+      "id": 10,
+      "run_date": "2026-05-03",
+      "started_at": "2026-05-03T16:23:36",
+      "finished_at": "2026-05-03T16:25:41",
+      "app_version": "0.3.5",
+      "stage": "Frontend Snapshot Schema Guard",
+      "status": "success",
+      "index_count": 7,
+      "sector_count": 7,
+      "stock_count": 3,
+      "report_path": "reports/daily/2026-05-03_daily_report.md",
+      "processed_csv_path": "data/processed/daily_signals.csv",
+      "log_path": "logs/app.log",
+      "created_at": "2026-05-03 16:25:41"
+    },
+    "data_health": {
+      "ok_count": 16,
+      "fetch_failed_count": 1,
+      "stale_data_count": 0,
+      "unavailable_count": 0,
+      "insufficient_data_count": 0,
+      "risk_item_count": 1
+    },
+    "signal_overview": {
+      "index": {
+        "bullish": 7,
+        "bearish": 0,
+        "neutral": 0
+      },
+      "sector": {
+        "bullish": 5,
+        "bearish": 0,
+        "neutral": 2
+      },
+      "stock": {
+        "bullish": 1,
+        "bearish": 1,
+        "neutral": 1
+      }
+    },
+    "changes": {
+      "latest_run_id": 10,
+      "previous_run_id": 9,
+      "index_change_count": 0,
+      "sector_change_count": 1,
+      "stock_change_count": 0,
+      "risk_item_count": 1,
+      "top_changes": [
+        {
+          "asset_type": "sector",
+          "symbol": "半导体",
+          "name": "半导体",
+          "previous_signal": "trend_up",
+          "latest_signal": "neutral",
+          "previous_signal_level": "positive",
+          "latest_signal_level": "unavailable",
+          "previous_data_status": "ok",
+          "latest_data_status": "fetch_failed",
+          "date": "",
+          "change_type": "signal_changed"
+        }
+      ]
+    },
+    "risk_items": [
+      {
+        "asset_type": "sector",
+        "symbol": "半导体",
+        "name": "半导体",
+        "latest_data_status": "fetch_failed",
+        "error_message": "SSLError: ssl connection failed",
+        "change_type": "risk_status"
+      }
+    ],
+    "watchlist_focus": {
+      "high_priority": [
+        {
+          "id": 16,
+          "run_id": 10,
+          "fetch_time": "2026-05-03T16:25:31",
+          "date": "2026-04-30",
+          "code": "000001",
+          "name": "平安银行",
+          "market": "SZ",
+          "industry": "银行",
+          "sector": "银行",
+          "board": "主板",
+          "tags": "核心观察,低估值,高股息",
+          "priority": "P1",
+          "position_status": "watch",
+          "observe_reason": "示例股票，用于测试数据采集、日报输出和后续风险观察",
+          "risk_note": "银行板块受宏观经济与息差变化影响较大",
+          "data_source": "akshare",
+          "close": 11.49,
+          "ma5": 11.37,
+          "ma20": 11.1675,
+          "signal": "trend_up",
+          "signal_level": "positive",
+          "data_status": "ok",
+          "error_message": "",
+          "raw_file_path": "data/raw/000001_daily_raw.csv",
+          "created_at": "2026-05-03 16:25:41"
+        },
+        {
+          "id": 17,
+          "run_id": 10,
+          "fetch_time": "2026-05-03T16:25:35",
+          "date": "2026-04-30",
+          "code": "600519",
+          "name": "贵州茅台",
+          "market": "SH",
+          "industry": "白酒",
+          "sector": "白酒",
+          "board": "主板",
+          "tags": "核心观察,消费龙头",
+          "priority": "P1",
+          "position_status": "watch",
+          "observe_reason": "示例股票，用于测试高价股采集、趋势判断和日报可读性",
+          "risk_note": "消费景气与估值波动可能带来回撤风险",
+          "data_source": "akshare",
+          "close": 1384.79,
+          "ma5": 1410.53,
+          "ma20": 1433.5605,
+          "signal": "trend_down",
+          "signal_level": "negative",
+          "data_status": "ok",
+          "error_message": "",
+          "raw_file_path": "data/raw/600519_daily_raw.csv",
+          "created_at": "2026-05-03 16:25:41"
+        }
+      ],
+      "holding": [],
+      "watching": [
+        {
+          "id": 16,
+          "run_id": 10,
+          "fetch_time": "2026-05-03T16:25:31",
+          "date": "2026-04-30",
+          "code": "000001",
+          "name": "平安银行",
+          "market": "SZ",
+          "industry": "银行",
+          "sector": "银行",
+          "board": "主板",
+          "tags": "核心观察,低估值,高股息",
+          "priority": "P1",
+          "position_status": "watch",
+          "observe_reason": "示例股票，用于测试数据采集、日报输出和后续风险观察",
+          "risk_note": "银行板块受宏观经济与息差变化影响较大",
+          "data_source": "akshare",
+          "close": 11.49,
+          "ma5": 11.37,
+          "ma20": 11.1675,
+          "signal": "trend_up",
+          "signal_level": "positive",
+          "data_status": "ok",
+          "error_message": "",
+          "raw_file_path": "data/raw/000001_daily_raw.csv",
+          "created_at": "2026-05-03 16:25:41"
+        },
+        {
+          "id": 17,
+          "run_id": 10,
+          "fetch_time": "2026-05-03T16:25:35",
+          "date": "2026-04-30",
+          "code": "600519",
+          "name": "贵州茅台",
+          "market": "SH",
+          "industry": "白酒",
+          "sector": "白酒",
+          "board": "主板",
+          "tags": "核心观察,消费龙头",
+          "priority": "P1",
+          "position_status": "watch",
+          "observe_reason": "示例股票，用于测试高价股采集、趋势判断和日报可读性",
+          "risk_note": "消费景气与估值波动可能带来回撤风险",
+          "data_source": "akshare",
+          "close": 1384.79,
+          "ma5": 1410.53,
+          "ma20": 1433.5605,
+          "signal": "trend_down",
+          "signal_level": "negative",
+          "data_status": "ok",
+          "error_message": "",
+          "raw_file_path": "data/raw/600519_daily_raw.csv",
+          "created_at": "2026-05-03 16:25:41"
+        },
+        {
+          "id": 18,
+          "run_id": 10,
+          "fetch_time": "2026-05-03T16:25:38",
+          "date": "2026-04-30",
+          "code": "300750",
+          "name": "宁德时代",
+          "market": "SZ",
+          "industry": "电池",
+          "sector": "新能源",
+          "board": "创业板",
+          "tags": "成长,高波动",
+          "priority": "P2",
+          "position_status": "watch",
+          "observe_reason": "用于观察成长风格与新能源主线的波动特征",
+          "risk_note": "行业竞争加剧与景气度变化可能影响估值",
+          "data_source": "akshare",
+          "close": 436.0,
+          "ma5": 437.69,
+          "ma20": 425.0205,
+          "signal": "neutral",
+          "signal_level": "neutral",
+          "data_status": "ok",
+          "error_message": "",
+          "raw_file_path": "data/raw/300750_daily_raw.csv",
+          "created_at": "2026-05-03 16:25:41"
+        }
+      ]
+    }
+  },
+  "review_queue": {
+    "count": 5,
+    "high_count": 1,
+    "medium_count": 3,
+    "low_count": 1,
+    "items": [
+      {
+        "asset_type": "sector",
+        "symbol": "半导体",
+        "name": "半导体",
+        "priority": "high",
+        "severity": "high",
+        "category": "data_risk",
+        "reason": "数据异常: fetch_failed",
+        "latest_signal": "neutral",
+        "latest_signal_level": "unavailable",
+        "latest_data_status": "fetch_failed",
+        "suggested_action": "检查数据源或人工复核",
+        "source": "history_summary",
+        "rank": 1
+      },
+      {
+        "asset_type": "sector",
+        "symbol": "人工智能",
+        "name": "人工智能",
+        "priority": "high",
+        "severity": "medium",
+        "category": "sector_focus",
+        "reason": "重点板块走势观察",
+        "latest_signal": "trend_up",
+        "latest_signal_level": "positive",
+        "latest_data_status": "ok",
+        "suggested_action": "观察板块轮动与强度变化",
+        "source": "latest_snapshot",
+        "rank": 2
+      },
+      {
+        "asset_type": "stock",
+        "symbol": "000001",
+        "name": "平安银行",
+        "priority": "high",
+        "severity": "medium",
+        "category": "high_priority_watchlist",
+        "reason": "高优先级自选股例行观察",
+        "latest_signal": "trend_up",
+        "latest_signal_level": "positive",
+        "latest_data_status": "ok",
+        "suggested_action": "例行观察个股走势",
+        "source": "latest_snapshot",
+        "rank": 3
+      },
+      {
+        "asset_type": "stock",
+        "symbol": "600519",
+        "name": "贵州茅台",
+        "priority": "high",
+        "severity": "medium",
+        "category": "high_priority_watchlist",
+        "reason": "高优先级自选股例行观察",
+        "latest_signal": "trend_down",
+        "latest_signal_level": "negative",
+        "latest_data_status": "ok",
+        "suggested_action": "例行观察个股走势",
+        "source": "latest_snapshot",
+        "rank": 4
+      },
+      {
+        "asset_type": "sector",
+        "symbol": "半导体",
+        "name": "半导体",
+        "priority": "medium",
+        "severity": "low",
+        "category": "signal_change",
+        "reason": "信号从 trend_up 变为 neutral",
+        "latest_signal": "neutral",
+        "latest_signal_level": "unavailable",
+        "latest_data_status": "fetch_failed",
+        "suggested_action": "复核信号变化并查看最近数据",
+        "source": "history_summary",
+        "rank": 5
+      }
+    ]
+  },
+  "signal_changes": {
+    "latest_run_id": 10,
+    "previous_run_id": 9,
+    "summary": {
+      "index_change_count": 0,
+      "sector_change_count": 1,
+      "stock_change_count": 0,
+      "risk_item_count": 1,
+      "fetch_failed_count": 1,
+      "stale_data_count": 0,
+      "unavailable_count": 0
+    },
+    "top_changes": [
+      {
+        "asset_type": "sector",
+        "symbol": "半导体",
+        "name": "半导体",
+        "previous_signal": "trend_up",
+        "latest_signal": "neutral",
+        "previous_signal_level": "positive",
+        "latest_signal_level": "unavailable",
+        "previous_data_status": "ok",
+        "latest_data_status": "fetch_failed",
+        "date": "",
+        "change_type": "signal_changed"
+      }
+    ]
+  },
+  "data_health": {
+    "ok_count": 16,
+    "fetch_failed_count": 1,
+    "stale_data_count": 0,
+    "unavailable_count": 0,
+    "insufficient_data_count": 0,
+    "risk_item_count": 1
+  },
+  "paths": {
+    "database": "data/history/ashare_insight_lab.sqlite3",
+    "daily_report": "reports/daily/2026-05-03_daily_report.md",
+    "dashboard_summary_json": "data/processed/dashboard_summary.json",
+    "review_queue_json": "data/processed/review_queue.json",
+    "review_queue_csv": "data/processed/review_queue.csv",
+    "signal_changes_csv": "data/processed/signal_changes.csv",
+    "ui_snapshot_json": "data/processed/ui_snapshot.json"
+  },
+  "messages": []
+}

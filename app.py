@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,17 @@ from typing import Any
 import pandas as pd
 
 from app_core.app_logger import get_logger
+from app_core.analytics.dashboard_summary import (
+    build_dashboard_summary,
+    write_dashboard_summary_json,
+)
+from app_core.analytics.review_queue import build_review_queue, write_review_queue_outputs
+from app_core.analytics.ui_snapshot import build_ui_snapshot, write_ui_snapshot_json
+from app_core.analytics.ui_snapshot_schema import (
+    validate_ui_snapshot,
+    write_sample_ui_snapshot,
+    write_ui_snapshot_contract,
+)
 from app_core.analytics.history_summary import build_signal_change_summary
 from app_core.config_loader import load_json, load_settings
 from app_core.data_sources.akshare_provider import (
@@ -64,7 +76,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.3.1 Historical Query & Signal Change Summary is ready.")
+    print("提示: V0.3.4 Frontend Data Snapshot is ready.")
 
 
 def print_version_info() -> None:
@@ -182,6 +194,202 @@ def run_changes() -> int:
         return 0
     except Exception as e:
         print(f"查询变化摘要失败: {e}")
+        return 1
+
+
+def run_dashboard_summary() -> int:
+    """打印 Dashboard 摘要并生成 JSON"""
+    try:
+        summary = build_dashboard_summary()
+        latest = summary.get("latest_run")
+        
+        if not latest:
+            print(summary.get("message", "未发现运行记录。"))
+            return 0
+
+        print("\nA股智研台｜Dashboard 摘要")
+        print(f"最新运行: {latest['run_date']} / {latest['status']}")
+        print(f"指数: {latest['index_count']}")
+        print(f"行业/板块: {latest['sector_count']}")
+        print(f"自选股: {latest['stock_count']}")
+        
+        health = summary["data_health"]
+        print(f"数据异常: {health['risk_item_count']}")
+        
+        changes = summary["changes"]
+        print(f"信号变化: 指数 {changes['index_change_count']} / 板块 {changes['sector_change_count']} / 自选股 {changes['stock_change_count']}")
+        
+        json_path = write_dashboard_summary_json()
+        print(f"摘要文件: {json_path.relative_to(get_project_root())}")
+        print("")
+        
+        return 0
+    except Exception as e:
+        print(f"生成 Dashboard 摘要失败: {e}")
+        return 1
+
+
+def run_review_queue() -> int:
+    """打印每日关注队列并生成文件"""
+    try:
+        queue = build_review_queue()
+        if not queue:
+            print("未发现运行记录，无法构建关注队列。")
+            return 0
+
+        print("\nA股智研台｜每日关注队列")
+        print(f"关注项数量: {len(queue)}")
+        
+        severity_counts = {
+            "high": sum(1 for item in queue if item["severity"] == "high"),
+            "medium": sum(1 for item in queue if item["severity"] == "medium"),
+            "low": sum(1 for item in queue if item["severity"] == "low"),
+        }
+        print(f"高优先级: {severity_counts['high']}")
+        print(f"中优先级: {severity_counts['medium']}")
+        print(f"低优先级: {severity_counts['low']}")
+
+        print("\n[Top 10]")
+        for item in queue[:10]:
+            print(f"{item['rank']}. [{item['asset_type']}] {item['name']} / {item['symbol']} / {item['category']} / {item['severity']}")
+            print(f"   原因：{item['reason']}")
+            print(f"   动作：{item['suggested_action']}")
+
+        outputs = write_review_queue_outputs()
+        print(f"\n输出文件:")
+        print(f"- {Path(outputs['json_path']).relative_to(get_project_root())}")
+        print(f"- {Path(outputs['csv_path']).relative_to(get_project_root())}")
+        print("")
+        
+        return 0
+    except Exception as e:
+        print(f"构建每日关注队列失败: {e}")
+        return 1
+
+
+def run_ui_snapshot() -> int:
+    """打印 UI 快照摘要并生成 JSON"""
+    try:
+        snapshot = build_ui_snapshot()
+        latest = snapshot.get("latest_run")
+        
+        if not latest:
+            if snapshot.get("messages"):
+                print(snapshot["messages"][0])
+            else:
+                print("未发现运行记录，无法构建 UI 快照。")
+            return 0
+
+        print("\nA股智研台｜UI 数据快照")
+        print(f"最新运行: {latest['run_date']} / {latest['status']}")
+        
+        dashboard = snapshot["dashboard_summary"]
+        print(f"Dashboard 摘要: 已生成")
+        
+        queue = snapshot["review_queue"]
+        print(f"每日关注队列: {queue['count']} 项")
+        
+        changes = snapshot["signal_changes"]["summary"]
+        print(f"信号变化: 板块 {changes['sector_change_count']} / 自选股 {changes['stock_change_count']} / 指数 {changes['index_change_count']}")
+        
+        json_path = write_ui_snapshot_json()
+        print(f"快照文件: {json_path.relative_to(get_project_root())}")
+        print("")
+        
+        return 0
+    except Exception as e:
+        print(f"生成 UI 快照失败: {e}")
+        return 1
+
+
+def run_validate_snapshot() -> int:
+    """校验 UI 快照结构"""
+    try:
+        snapshot_path = get_project_root() / "data" / "processed" / "ui_snapshot.json"
+        snapshot = None
+        
+        if snapshot_path.exists():
+            with open(snapshot_path, "r", encoding="utf-8") as f:
+                snapshot = json.load(f)
+        else:
+            print("未发现现有快照文件，正在临时构建...")
+            snapshot = build_ui_snapshot()
+            
+        result = validate_ui_snapshot(snapshot)
+        
+        print("\nA股智研台｜UI 快照结构校验")
+        print(f"校验结果: {'通过' if result['is_valid'] else '失败'}")
+        print(f"错误: {result['error_count']}")
+        print(f"警告: {result['warning_count']}")
+        
+        if result["errors"]:
+            print("\n[错误详情]")
+            for err in result["errors"][:10]:
+                print(f"- {err}")
+                
+        if result["warnings"]:
+            print("\n[警告详情]")
+            for warn in result["warnings"][:10]:
+                print(f"- {warn}")
+        
+        print("")
+        return 0 if result["is_valid"] else 1
+    except Exception as e:
+        print(f"快照校验过程异常: {e}")
+        return 1
+
+
+def run_export_frontend_contract() -> int:
+    """导出前端契约与示例快照"""
+    try:
+        contract_path = write_ui_snapshot_contract()
+        sample_path = write_sample_ui_snapshot()
+        
+        print("\nA股智研台｜前端契约导出")
+        print(f"契约文件: {contract_path.relative_to(get_project_root())}")
+        print(f"示例快照: {sample_path.relative_to(get_project_root())}")
+        print("")
+        return 0
+    except Exception as e:
+        print(f"导出契约失败: {e}")
+        return 1
+
+
+def run_sync_frontend_snapshot() -> int:
+    """同步后端快照到前端静态目录"""
+    try:
+        root = get_project_root()
+        source_path = root / "data" / "processed" / "ui_snapshot.json"
+        target_dir = root / "frontend"
+        target_path = target_dir / "snapshot.json"
+
+        # 1. 确保目录存在
+        ensure_directory(target_dir)
+
+        # 2. 检查源文件，不存在则生成
+        if not source_path.exists():
+            print(f"源快照不存在，正在生成: {source_path.relative_to(root)}")
+            write_ui_snapshot_json()
+        
+        if not source_path.exists():
+            print("错误: 无法生成后端快照文件。")
+            return 1
+
+        # 3. 复制文件
+        with open(source_path, "r", encoding="utf-8") as f_src:
+            data = json.load(f_src)
+        
+        with open(target_path, "w", encoding="utf-8") as f_target:
+            json.dump(data, f_target, ensure_ascii=False, indent=2)
+
+        print("\nA股智研台｜前端快照同步成功")
+        print(f"后端路径: {source_path.relative_to(root)}")
+        print(f"前端路径: {target_path.relative_to(root)}")
+        print(f"同步状态: 成功")
+        print("")
+        return 0
+    except Exception as e:
+        print(f"同步失败: {e}")
         return 1
 
 
@@ -527,6 +735,35 @@ def run_daily() -> int:
         except Exception as e:
             logger.warning("failed to generate signal changes csv: %s", str(e))
 
+        # 6. 生成 Dashboard 摘要 JSON (V0.3.2)
+        try:
+            json_path = write_dashboard_summary_json()
+            print(f"Dashboard 摘要已生成: {json_path}")
+        except Exception as e:
+            logger.warning("failed to generate dashboard summary json: %s", str(e))
+
+        # 7. 生成每日关注队列 (V0.3.3)
+        try:
+            review_queue_outputs = write_review_queue_outputs()
+            print(f"每日关注队列已生成: {review_queue_outputs['json_path']}")
+        except Exception as e:
+            logger.warning("failed to generate review queue outputs: %s", str(e))
+
+        # 8. 生成 UI 数据快照 (V0.3.4)
+        try:
+            ui_snapshot_path = write_ui_snapshot_json()
+            print(f"UI 数据快照已生成: {ui_snapshot_path}")
+            
+            # 校验快照结构 (V0.3.5)
+            with open(ui_snapshot_path, "r", encoding="utf-8") as f:
+                snapshot_data = json.load(f)
+            val_res = validate_ui_snapshot(snapshot_data)
+            if not val_res["is_valid"]:
+                logger.warning("UI snapshot validation failed: %d errors", val_res["error_count"])
+                print("UI 快照结构校验存在问题，请执行 python3 app.py validate-snapshot 查看详情")
+        except Exception as e:
+            logger.warning("failed to generate or validate ui snapshot json: %s", str(e))
+
         print("run-daily 执行完成")
         print(f"已处理指数数: {len(enabled_indices)}")
         print(f"已处理板块数: {len(enabled_sectors)}")
@@ -648,6 +885,24 @@ def main() -> int:
     if sys.argv[1] == "changes":
         return run_changes()
 
+    if sys.argv[1] == "dashboard-summary":
+        return run_dashboard_summary()
+
+    if sys.argv[1] == "review-queue":
+        return run_review_queue()
+
+    if sys.argv[1] == "ui-snapshot":
+        return run_ui_snapshot()
+
+    if sys.argv[1] == "validate-snapshot":
+        return run_validate_snapshot()
+
+    if sys.argv[1] == "export-frontend-contract":
+        return run_export_frontend_contract()
+
+    if sys.argv[1] == "sync-frontend-snapshot":
+        return run_sync_frontend_snapshot()
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -657,6 +912,12 @@ def main() -> int:
     print("python app.py run-daily")
     print("python app.py history")
     print("python app.py changes")
+    print("python app.py dashboard-summary")
+    print("python app.py review-queue")
+    print("python app.py ui-snapshot")
+    print("python app.py validate-snapshot")
+    print("python app.py export-frontend-contract")
+    print("python app.py sync-frontend-snapshot")
     return 1
 
 

@@ -10,7 +10,7 @@ def test_main_version_outputs_version_info(monkeypatch, capsys) -> None:
     captured = capsys.readouterr()
 
     assert result == 0
-    assert "AShare Insight Lab 0.3.1 (Historical Query & Signal Change Summary)" in captured.out
+    assert "AShare Insight Lab 0.3.5 (Frontend Snapshot Schema Guard)" in captured.out
 
 
 def test_main_about_outputs_project_metadata(monkeypatch, capsys) -> None:
@@ -44,5 +44,12 @@ def test_main_check_data_source_invokes_doctor(monkeypatch) -> None:
 def test_main_doctor_invokes_doctor(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "doctor"])
     monkeypatch.setattr(app, "run_data_source_doctor", lambda: 0)
+
+    assert app.main() == 0
+
+
+def test_main_sync_frontend_snapshot_invokes_sync(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "sync-frontend-snapshot"])
+    monkeypatch.setattr(app, "run_sync_frontend_snapshot", lambda: 0)
 
     assert app.main() == 0
