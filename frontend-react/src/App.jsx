@@ -120,6 +120,7 @@ function App() {
             title={getTitle()} 
             snapshotAt={data?.generated_at} 
             runDate={data?.latest_run?.run_date} 
+            status={data?.latest_run?.status}
             healthStatus={data?.dashboard_summary?.data_health?.risk_item_count > 0 ? 'Risk' : 'OK'}
           />
           {renderView()}

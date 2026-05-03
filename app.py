@@ -360,7 +360,7 @@ def run_sync_frontend_snapshot() -> int:
     try:
         root = get_project_root()
         source_path = root / "data" / "processed" / "ui_snapshot.json"
-        target_dir = root / "frontend"
+        target_dir = root / "frontend-react" / "src" / "data"
         target_path = target_dir / "snapshot.json"
 
         # 1. 确保目录存在
@@ -368,24 +368,30 @@ def run_sync_frontend_snapshot() -> int:
 
         # 2. 检查源文件，不存在则生成
         if not source_path.exists():
-            print(f"源快照不存在，正在生成: {source_path.relative_to(root)}")
+            print(f"源快照不存在，正在尝试生成: {source_path.relative_to(root)}")
             write_ui_snapshot_json()
         
         if not source_path.exists():
-            print("错误: 无法生成后端快照文件。")
+            print("错误: 无法生成后端快照文件。请先运行 python3 app.py run-daily。")
             return 1
 
-        # 3. 复制文件
+        # 3. 复制文件并输出详细信息
         with open(source_path, "r", encoding="utf-8") as f_src:
             data = json.load(f_src)
         
         with open(target_path, "w", encoding="utf-8") as f_target:
             json.dump(data, f_target, ensure_ascii=False, indent=2)
 
+        generated_at = data.get("generated_at", "未知")
+        latest_run = data.get("latest_run", {})
+        run_date = latest_run.get("run_date", "未知")
+        status = latest_run.get("status", "未知")
+
         print("\nA股智研台｜前端快照同步成功")
-        print(f"后端路径: {source_path.relative_to(root)}")
-        print(f"前端路径: {target_path.relative_to(root)}")
-        print(f"同步状态: 成功")
+        print(f"源路径: {source_path.relative_to(root)}")
+        print(f"目标路径: {target_path.relative_to(root)}")
+        print(f"生成时间: {generated_at}")
+        print(f"最近运行: {run_date} ({status})")
         print("")
         return 0
     except Exception as e:

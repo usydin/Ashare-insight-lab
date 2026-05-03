@@ -49,7 +49,33 @@ if [ ! -f "src-tauri/tauri.conf.json" ]; then
     exit 1
 fi
 
-# 7. 构建前端
+# 7. 同步前端快照 (V0.6.0)
+echo ">>> 正在同步前端快照 (sync-frontend-snapshot)..."
+if ! command -v python3 &> /dev/null; then
+    echo "错误: 未找到 python3。"
+    exit 1
+fi
+
+# 检查并激活虚拟环境
+if [ -d ".venv" ]; then
+    echo ">>> 正在激活虚拟环境 .venv..."
+    source .venv/bin/activate
+elif [[ -z "${VIRTUAL_ENV:-}" ]]; then
+    echo "⚠️  警告: 未找到 .venv 目录且未检测到已激活的虚拟环境。"
+    echo "打包可能会因为缺少 Python 依赖而失败。"
+fi
+
+echo ">>> 执行 ui-snapshot..."
+python3 app.py ui-snapshot
+echo ">>> 执行 validate-snapshot..."
+python3 app.py validate-snapshot
+echo ">>> 执行 sync-frontend-snapshot..."
+if ! python3 app.py sync-frontend-snapshot; then
+    echo "错误: 前端快照同步失败，打包终止。"
+    exit 1
+fi
+
+# 8. 构建前端
 echo ">>> 正在构建前端 (frontend-react)..."
 cd "frontend-react"
 npm run build
