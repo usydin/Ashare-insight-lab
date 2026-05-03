@@ -10,7 +10,7 @@ def test_main_version_outputs_version_info(monkeypatch, capsys) -> None:
     captured = capsys.readouterr()
 
     assert result == 0
-    assert "AShare Insight Lab 0.2.3 (Data Enhancement - Sectors)" in captured.out
+    assert "AShare Insight Lab 0.2.4 (UI Planning - macOS Terminal Vision)" in captured.out
 
 
 def test_main_about_outputs_project_metadata(monkeypatch, capsys) -> None:

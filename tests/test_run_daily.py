@@ -72,7 +72,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.2.3 run-daily",
+        stage_name: str = "V0.2.4 run-daily",
         processed_csv_path: str = "data/processed/daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
@@ -198,7 +198,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.2.3 run-daily",
+            "stage_name": "V0.2.4 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
