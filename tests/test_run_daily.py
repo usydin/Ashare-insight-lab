@@ -65,18 +65,18 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         return output_path
 
     def fake_write_daily_report(
-        records: list[dict[str, object]],
-        index_records: list[dict[str, object]] | None = None,
-        sector_records: list[dict[str, object]] | None = None,
-        *,
-        report_date: str | None = None,
-        generated_at: str | None = None,
-        output_path: str | Path | None = None,
-        stage_name: str = "V0.3.0 run-daily",
-        processed_csv_path: str = "data/processed/daily_signals.csv",
-        raw_data_dir: str = "data/raw",
-        log_path: str = "logs/app.log",
-    ) -> Path:
+            records: list[dict[str, object]],
+            index_records: list[dict[str, object]] | None = None,
+            sector_records: list[dict[str, object]] | None = None,
+            *,
+            report_date: str | None = None,
+            generated_at: str | None = None,
+            output_path: str | Path | None = None,
+            stage_name: str = "V0.3.1 run-daily",
+            processed_csv_path: str = "data/processed/daily_signals.csv",
+            raw_data_dir: str = "data/raw",
+            log_path: str = "logs/app.log",
+        ) -> Path:
         del index_records, sector_records, report_date, generated_at, output_path
         report_records.extend(records)
         report_kwargs.update(
@@ -97,8 +97,25 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
             "sector_count": 0,
             "stock_count": 0
         }
+    
+    def fake_build_signal_change_summary(**kwargs):
+        return {
+            "latest_run_id": 1,
+            "previous_run_id": None,
+            "index_changes": [],
+            "sector_changes": [],
+            "stock_changes": [],
+            "risk_items": [],
+            "summary": {
+                "index_change_count": 0,
+                "sector_change_count": 0,
+                "stock_change_count": 0,
+                "risk_item_count": 0
+            }
+        }
 
     monkeypatch.setattr(app, "get_logger", lambda: logger)
+    monkeypatch.setattr(app, "build_signal_change_summary", fake_build_signal_change_summary)
     monkeypatch.setattr(
         app,
         "load_settings",
@@ -208,7 +225,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.3.0 run-daily",
+            "stage_name": "V0.3.1 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
@@ -306,8 +323,30 @@ def test_run_daily_marks_stale_sector_data(monkeypatch, tmp_path: Path) -> None:
     def fake_save_dataframe_csv(df: pd.DataFrame, path: Path, **kwargs) -> Path:
         save_calls.append((df, path))
         return path
+    
+    def fake_insert_run_daily_snapshot(**kwargs):
+        return {
+            "database_path": "fake.sqlite3",
+            "run_id": 1,
+            "index_count": 0,
+            "sector_count": 0,
+            "stock_count": 0
+        }
+    
+    def fake_build_signal_change_summary(**kwargs):
+        return {
+            "latest_run_id": 1,
+            "previous_run_id": None,
+            "index_changes": [],
+            "sector_changes": [],
+            "stock_changes": [],
+            "risk_items": [],
+            "summary": {"index_change_count": 0, "sector_change_count": 0, "stock_change_count": 0, "risk_item_count": 0}
+        }
 
     monkeypatch.setattr(app, "get_logger", lambda: logger)
+    monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
+    monkeypatch.setattr(app, "build_signal_change_summary", fake_build_signal_change_summary)
     monkeypatch.setattr(app, "load_settings", lambda: {
         "storage": {"raw_dir": "raw", "processed_dir": "proc", "log_dir": "logs"},
         "network": {"request_timeout_seconds": 10}
@@ -325,6 +364,11 @@ def test_run_daily_marks_stale_sector_data(monkeypatch, tmp_path: Path) -> None:
 
     result = app.run_daily()
     assert result == 0
+    assert any(
+        "run-daily summary: success_count=0 failed_count=0 trend_up_count=0 trend_down_count=0 neutral_count=0"
+        == message
+        for message in logger.infos
+    )
 
     # 检查生成的 sector_signals.csv
     sector_df = [df for df, path in save_calls if "sector_signals.csv" in str(path)][0]

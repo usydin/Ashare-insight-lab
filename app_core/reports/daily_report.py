@@ -21,7 +21,7 @@ def render_daily_report(
     sector_records: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
     *,
-    stage_name: str = "V0.2.4 run-daily",
+    stage_name: str = "V0.3.1 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",

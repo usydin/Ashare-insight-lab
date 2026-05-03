@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 
 from app_core.app_logger import get_logger
+from app_core.analytics.history_summary import build_signal_change_summary
 from app_core.config_loader import load_json, load_settings
 from app_core.data_sources.akshare_provider import (
     fetch_stock_daily_history,
@@ -63,7 +64,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.2.3 sector boards integration is ready.")
+    print("提示: V0.3.1 Historical Query & Signal Change Summary is ready.")
 
 
 def print_version_info() -> None:
@@ -125,6 +126,63 @@ def run_history() -> int:
             f"{run['report_path']}"
         )
     return 0
+
+
+def run_changes() -> int:
+    """打印信号变化摘要"""
+    try:
+        summary = build_signal_change_summary()
+        latest_id = summary["latest_run_id"]
+        prev_id = summary["previous_run_id"]
+
+        if latest_id is None:
+            print("未发现运行记录。")
+            return 0
+
+        print("\nA股智研台｜信号变化摘要")
+        print(f"latest_run_id: {latest_id}")
+        print(f"previous_run_id: {prev_id if prev_id else 'None'}")
+
+        if prev_id is None:
+            print("\n当前只有 1 次运行记录，暂无可比较的上一轮快照。")
+        
+        stats = summary["summary"]
+        print(f"\n[统计]")
+        print(f"指数变化: {stats['index_change_count']}")
+        print(f"板块变化: {stats['sector_change_count']}")
+        print(f"自选股变化: {stats['stock_change_count']}")
+        print(f"风险/异常项: {stats['risk_item_count']}")
+
+        def _print_changes(title: str, changes: list[dict], limit: int = 10):
+            if not changes:
+                return
+            print(f"\n[{title}]")
+            for item in changes[:limit]:
+                if item["change_type"] == "new_asset":
+                    print(f"- {item['name']}: [新资产] -> {item['latest_signal']}")
+                elif item["change_type"] == "missing_asset":
+                    print(f"- {item['name']}: [已移除] (原: {item['previous_signal']})")
+                else:
+                    print(f"- {item['name']}: {item['previous_signal']} -> {item['latest_signal']}")
+            if len(changes) > limit:
+                print(f"  ... 还有 {len(changes) - limit} 项未列出")
+
+        _print_changes("指数变化", summary["index_changes"])
+        _print_changes("行业/板块变化", summary["sector_changes"])
+        _print_changes("自选股变化", summary["stock_changes"])
+
+        if summary["risk_items"]:
+            print(f"\n[风险/异常项]")
+            for item in summary["risk_items"][:10]:
+                print(f"- {item['name']}: {item['latest_data_status']}")
+            if len(summary["risk_items"]) > 10:
+                print(f"  ... 还有 {len(summary['risk_items']) - 10} 项未列出")
+        
+        print("")
+        return 0
+    except Exception as e:
+        print(f"查询变化摘要失败: {e}")
+        return 1
 
 
 def run_daily() -> int:
@@ -402,7 +460,7 @@ def run_daily() -> int:
             sector_records=sector_records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.3.0 run-daily",
+            stage_name="V0.3.1 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -451,6 +509,23 @@ def run_daily() -> int:
         except Exception as e:
             logger.warning("failed to save run-daily snapshot to SQLite: %s", str(e))
             print(f"数据库写入失败，但 CSV 与日报已生成: {e}")
+
+        # 5. 生成信号变化摘要 CSV (V0.3.1)
+        try:
+            summary = build_signal_change_summary(latest_run_id=db_run_id)
+            if summary["previous_run_id"]:
+                all_changes = (
+                    summary["index_changes"] + 
+                    summary["sector_changes"] + 
+                    summary["stock_changes"]
+                )
+                if all_changes:
+                    changes_df = pd.DataFrame(all_changes)
+                    changes_csv_path = Path(processed_dir) / "signal_changes.csv"
+                    save_dataframe_csv(changes_df, changes_csv_path)
+                    print(f"信号变化摘要已保存: {changes_csv_path}")
+        except Exception as e:
+            logger.warning("failed to generate signal changes csv: %s", str(e))
 
         print("run-daily 执行完成")
         print(f"已处理指数数: {len(enabled_indices)}")
@@ -570,6 +645,9 @@ def main() -> int:
     if sys.argv[1] == "history":
         return run_history()
 
+    if sys.argv[1] == "changes":
+        return run_changes()
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -578,6 +656,7 @@ def main() -> int:
     print("python app.py doctor")
     print("python app.py run-daily")
     print("python app.py history")
+    print("python app.py changes")
     return 1
 
 
