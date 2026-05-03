@@ -72,7 +72,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.2.4 run-daily",
+        stage_name: str = "V0.3.0 run-daily",
         processed_csv_path: str = "data/processed/daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
@@ -88,6 +88,15 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
             }
         )
         return tmp_path / "daily_report.md"
+
+    def fake_insert_run_daily_snapshot(**kwargs):
+        return {
+            "database_path": "fake.sqlite3",
+            "run_id": 1,
+            "index_count": 0,
+            "sector_count": 0,
+            "stock_count": 0
+        }
 
     monkeypatch.setattr(app, "get_logger", lambda: logger)
     monkeypatch.setattr(
@@ -149,6 +158,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
     monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
     monkeypatch.setattr(app, "write_daily_report", fake_write_daily_report)
+    monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
     monkeypatch.setattr(app, "get_project_root", lambda: tmp_path)
 
     result = app.run_daily()
@@ -198,7 +208,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.2.4 run-daily",
+            "stage_name": "V0.3.0 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",

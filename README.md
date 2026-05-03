@@ -12,9 +12,9 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.2.4 UI Planning - macOS Terminal Vision`
-- 当前目标：冻结 UI 技术路线与产品形态，规划现代化 macOS 金融终端布局，不涉及 UI 代码实现
-- 当前边界：不写 Tauri/React 代码、不做模拟盘、不做 AI Agent、不做 GUI 实现、不做实盘交易
+- 阶段名称：`V0.3.0 Local Data Asset Foundation`
+- 当前目标：建立 SQLite 本地历史库，持久化 run-daily 信号，为后续 Dashboard 与 AI 投研室提供数据底座
+- 当前边界：不做 UI、不做 Tauri/React 代码、不做模拟盘、不做 AI Agent、不做实盘交易
 
 ## 开发机与部署机分离方案
 

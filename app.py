@@ -40,6 +40,10 @@ from app_core.project_info import (
 )
 from app_core.reports.daily_report import write_daily_report
 from app_core.storage.file_store import ensure_directory, save_dataframe_csv
+from app_core.storage.sqlite_store import (
+    get_latest_runs,
+    insert_run_daily_snapshot,
+)
 from app_core.strategies.ma_strategy import analyze_ma_signal
 from app_core.watchlist import get_enabled_watchlist, load_watchlist_items, tags_to_csv_value
 
@@ -98,6 +102,28 @@ def run_data_source_doctor() -> int:
     print(f"诊断报告: {report_path}")
     print("日志路径: logs/app.log")
 
+    return 0
+
+
+def run_history() -> int:
+    """打印最近的运行历史"""
+    runs = get_latest_runs(limit=10)
+    if not runs:
+        print("未发现历史运行记录。")
+        return 0
+
+    print(f"{'id':<4} | {'run_date':<10} | {'status':<7} | {'index':<5} | {'sector':<6} | {'stock':<5} | {'report_path'}")
+    print("-" * 100)
+    for run in runs:
+        print(
+            f"{run['id']:<4} | "
+            f"{run['run_date']:<10} | "
+            f"{run['status']:<7} | "
+            f"{run['index_count']:<5} | "
+            f"{run['sector_count']:<6} | "
+            f"{run['stock_count']:<5} | "
+            f"{run['report_path']}"
+        )
     return 0
 
 
@@ -376,7 +402,7 @@ def run_daily() -> int:
             sector_records=sector_records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.2.4 run-daily",
+            stage_name="V0.3.0 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -394,12 +420,47 @@ def run_daily() -> int:
         logger.info("daily report written to %s", report_path)
         logger.info("run-daily finished")
 
+        # 4. 写入 SQLite 数据库 (V0.3.0)
+        run_finished_at = datetime.now()
+        run_metadata = {
+            "run_date": report_date,
+            "started_at": run_started_at.isoformat(timespec="seconds"),
+            "finished_at": run_finished_at.isoformat(timespec="seconds"),
+            "app_version": VERSION,
+            "stage": STAGE,
+            "status": "success",
+            "index_count": len(index_records),
+            "sector_count": len(sector_records),
+            "stock_count": len(watchlist_records),
+            "report_path": _to_relative_path(report_path),
+            "processed_csv_path": _to_relative_path(processed_path),
+            "log_path": _to_relative_path(log_path),
+        }
+
+        db_run_id = None
+        try:
+            db_result = insert_run_daily_snapshot(
+                run_metadata=run_metadata,
+                index_records=index_records,
+                sector_records=sector_records,
+                watchlist_records=watchlist_records,
+            )
+            db_run_id = db_result["run_id"]
+            db_path = db_result["database_path"]
+            logger.info("run-daily snapshot saved to SQLite: run_id=%s", db_run_id)
+        except Exception as e:
+            logger.warning("failed to save run-daily snapshot to SQLite: %s", str(e))
+            print(f"数据库写入失败，但 CSV 与日报已生成: {e}")
+
         print("run-daily 执行完成")
         print(f"已处理指数数: {len(enabled_indices)}")
         print(f"已处理板块数: {len(enabled_sectors)}")
         print(f"已处理股票数: {len(enabled_items)}")
         print(f"处理后数据: {processed_path}")
         print(f"日报路径: {report_path}")
+        if db_run_id:
+            print(f"本地数据库: {db_path}")
+            print(f"数据库写入: 已写入 run_id={db_run_id}")
         print("日志路径: logs/app.log")
 
         return 0
@@ -506,6 +567,9 @@ def main() -> int:
     if sys.argv[1] == "run-daily":
         return run_daily()
 
+    if sys.argv[1] == "history":
+        return run_history()
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -513,6 +577,7 @@ def main() -> int:
     print("python app.py check-data-source")
     print("python app.py doctor")
     print("python app.py run-daily")
+    print("python app.py history")
     return 1
 
 
