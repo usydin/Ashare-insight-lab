@@ -18,9 +18,10 @@ from app_core.storage.file_store import write_text_file
 def render_daily_report(
     records: list[dict[str, Any]],
     index_records: list[dict[str, Any]] | None = None,
+    sector_records: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
     *,
-    stage_name: str = "V0.2.2 run-daily",
+    stage_name: str = "V0.2.3 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -85,6 +86,37 @@ def render_daily_report(
             )
     else:
         lines.append("| - | - | - | - | - | - | - | - |")
+
+    lines.extend(
+        [
+            "",
+            "## 行业/板块观察",
+            "",
+            "| symbol | name | board_type | category | priority | date | close | signal | signal_level | data_status |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+
+    if sector_records:
+        for sec in sector_records:
+            lines.append(
+                (
+                    "| {symbol} | {name} | {board_type} | {category} | {priority} | {date} | {close} | {signal} | {signal_level} | {data_status} |"
+                ).format(
+                    symbol=sec.get("symbol", ""),
+                    name=sec.get("name", ""),
+                    board_type=sec.get("board_type", ""),
+                    category=sec.get("category", ""),
+                    priority=sec.get("priority", ""),
+                    date=_display_value(sec.get("date")),
+                    close=_display_value(sec.get("close")),
+                    signal=sec.get("signal", ""),
+                    signal_level=sec.get("signal_level", ""),
+                    data_status=sec.get("data_status", ""),
+                )
+            )
+    else:
+        lines.append("| - | - | - | - | - | - | - | - | - | - |")
 
     lines.extend(
         [
@@ -155,11 +187,12 @@ def render_daily_report(
 def write_daily_report(
     records: list[dict[str, Any]],
     index_records: list[dict[str, Any]] | None = None,
+    sector_records: list[dict[str, Any]] | None = None,
     *,
     report_date: str | None = None,
     generated_at: str | None = None,
     output_path: str | Path | None = None,
-    stage_name: str = "V0.2.2 run-daily",
+    stage_name: str = "V0.2.3 run-daily",
     processed_csv_path: str = "data/processed/daily_signals.csv",
     raw_data_dir: str = "data/raw",
     log_path: str = "logs/app.log",
@@ -170,6 +203,7 @@ def write_daily_report(
     content = render_daily_report(
         records,
         index_records=index_records,
+        sector_records=sector_records,
         generated_at=generated_at,
         stage_name=stage_name,
         processed_csv_path=processed_csv_path,

@@ -14,10 +14,16 @@ from app_core.data_sources.akshare_provider import (
     summarize_fetch_error,
 )
 from app_core.data_sources.index_provider import fetch_index_daily_history
+from app_core.data_sources.sector_provider import fetch_sector_board_daily_history
 from app_core.diagnostics.data_source_health import run_data_source_health_check
 from app_core.market_indices import (
     get_enabled_market_indices,
     load_market_indices,
+)
+from app_core.sector_boards import (
+    get_enabled_sector_boards,
+    load_sector_board_items,
+    load_sector_boards,
 )
 from app_core.path_utils import get_project_root
 from app_core.project_info import (
@@ -53,7 +59,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.2.2 market indices integration is ready.")
+    print("提示: V0.2.3 sector boards integration is ready.")
 
 
 def print_version_info() -> None:
@@ -101,6 +107,7 @@ def run_daily() -> int:
         settings = load_settings()
         watchlist_config = load_json("config/watchlist.json")
         market_indices_config = load_market_indices("config/market_indices.json")
+        sector_boards_config = load_sector_boards("config/sector_boards.json")
 
         run_started_at = datetime.now()
         generated_at = run_started_at.isoformat(timespec="seconds")
@@ -150,6 +157,8 @@ def run_daily() -> int:
                     "error_message": strategy_result["error_message"],
                 }
                 index_records.append(record)
+            except KeyboardInterrupt:
+                raise
             except Exception as error:
                 message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
                 index_records.append(
@@ -172,7 +181,81 @@ def run_daily() -> int:
             index_df = pd.DataFrame(index_records)
             save_dataframe_csv(index_df, Path(processed_dir) / "index_signals.csv")
 
-        # 2. 处理自选股
+        # 2. 处理行业/板块
+        enabled_sectors = get_enabled_sector_boards(sector_boards_config)
+        logger.info("run-daily: processing %d sector boards", len(enabled_sectors))
+        sector_records: list[dict[str, Any]] = []
+
+        for item in enabled_sectors:
+            symbol = item["symbol"]
+            name = item["name"]
+            board_type = item["board_type"]
+            fetch_time = datetime.now().isoformat(timespec="seconds")
+            metadata = _build_sector_metadata(item)
+
+            try:
+                raw_dataframe, normalized_dataframe = fetch_sector_board_daily_history(
+                    symbol, board_type, timeout_seconds=timeout_seconds
+                )
+                save_dataframe_csv(raw_dataframe, Path(raw_dir) / f"{symbol}_{board_type}_raw.csv")
+
+                strategy_result = analyze_ma_signal(normalized_dataframe)
+                
+                # 数据新鲜度校验
+                data_status = strategy_result["data_status"]
+                signal_level = _determine_signal_level(
+                    strategy_result["signal"], data_status
+                )
+                error_message = strategy_result["error_message"]
+                
+                if data_status == "ok":
+                    latest_date_str = strategy_result["date"]
+                    if latest_date_str:
+                        latest_date = datetime.strptime(latest_date_str, "%Y-%m-%d")
+                        days_diff = (datetime.now() - latest_date).days
+                        if days_diff > 30:
+                            data_status = "stale_data"
+                            signal_level = "warning"
+                            error_message = f"latest board data is stale: {latest_date_str}"
+
+                record = {
+                    **metadata,
+                    "fetch_time": fetch_time,
+                    "date": strategy_result["date"],
+                    "close": strategy_result["close"],
+                    "ma5": strategy_result["ma5"],
+                    "ma20": strategy_result["ma20"],
+                    "signal": strategy_result["signal"],
+                    "signal_level": signal_level,
+                    "data_status": data_status,
+                    "error_message": error_message,
+                }
+                sector_records.append(record)
+            except KeyboardInterrupt:
+                raise
+            except Exception as error:
+                message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
+                sector_records.append(
+                    {
+                        **metadata,
+                        "fetch_time": fetch_time,
+                        "date": "",
+                        "close": None,
+                        "ma5": None,
+                        "ma20": None,
+                        "signal": "neutral",
+                        "signal_level": "unavailable",
+                        "data_status": "fetch_failed",
+                        "error_message": message,
+                    }
+                )
+
+        # 保存板块结果
+        if sector_records:
+            sector_df = pd.DataFrame(sector_records)
+            save_dataframe_csv(sector_df, Path(processed_dir) / "sector_signals.csv")
+
+        # 3. 处理自选股
         all_watchlist_items = load_watchlist_items(watchlist_config)
         enabled_items = get_enabled_watchlist(all_watchlist_items)
 
@@ -290,9 +373,10 @@ def run_daily() -> int:
         report_path = write_daily_report(
             watchlist_records,
             index_records=index_records,
+            sector_records=sector_records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.2.2 run-daily",
+            stage_name="V0.2.3 run-daily",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,
@@ -312,6 +396,7 @@ def run_daily() -> int:
 
         print("run-daily 执行完成")
         print(f"已处理指数数: {len(enabled_indices)}")
+        print(f"已处理板块数: {len(enabled_sectors)}")
         print(f"已处理股票数: {len(enabled_items)}")
         print(f"处理后数据: {processed_path}")
         print(f"日报路径: {report_path}")
@@ -365,6 +450,18 @@ def _build_index_metadata(item: dict[str, Any]) -> dict[str, Any]:
         "symbol": item.get("symbol", ""),
         "name": item.get("name", ""),
         "category": item.get("category", ""),
+    }
+
+
+def _build_sector_metadata(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "symbol": item.get("symbol", ""),
+        "name": item.get("name", ""),
+        "board_type": item.get("board_type", ""),
+        "category": item.get("category", ""),
+        "priority": item.get("priority", ""),
+        "observe_reason": item.get("observe_reason", ""),
+        "risk_note": item.get("risk_note", ""),
     }
 
 

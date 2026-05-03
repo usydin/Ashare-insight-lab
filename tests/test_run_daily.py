@@ -67,16 +67,17 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     def fake_write_daily_report(
         records: list[dict[str, object]],
         index_records: list[dict[str, object]] | None = None,
+        sector_records: list[dict[str, object]] | None = None,
         *,
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.2.2 run-daily",
+        stage_name: str = "V0.2.3 run-daily",
         processed_csv_path: str = "data/processed/daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
     ) -> Path:
-        del index_records, report_date, generated_at, output_path
+        del index_records, sector_records, report_date, generated_at, output_path
         report_records.extend(records)
         report_kwargs.update(
             {
@@ -137,8 +138,14 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         "load_market_indices",
         lambda _: []
     )
+    monkeypatch.setattr(
+        app,
+        "load_sector_boards",
+        lambda _: {}
+    )
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
     monkeypatch.setattr(app, "load_market_indices", lambda _: [])
+    monkeypatch.setattr(app, "load_sector_boards", lambda _: {})
     monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
     monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
     monkeypatch.setattr(app, "write_daily_report", fake_write_daily_report)
@@ -191,7 +198,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.2.2 run-daily",
+            "stage_name": "V0.2.3 run-daily",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
@@ -246,6 +253,7 @@ def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) ->
     )
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
     monkeypatch.setattr(app, "load_market_indices", lambda _: [])
+    monkeypatch.setattr(app, "load_sector_boards", lambda _: {})
     monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
     monkeypatch.setattr(
         app,
@@ -265,3 +273,53 @@ def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) ->
     assert fetch_timeouts == [10]
     assert "run-daily 已被用户中断" in captured.out
     assert logger.warnings == ["run-daily interrupted by user"]
+
+
+def test_run_daily_marks_stale_sector_data(monkeypatch, tmp_path: Path) -> None:
+    logger = DummyLogger()
+    save_calls: list[tuple[pd.DataFrame, Path]] = []
+
+    # 构造一个旧日期（超过 30 天）
+    stale_date = (pd.Timestamp.now() - pd.Timedelta(days=40)).strftime("%Y-%m-%d")
+
+    def fake_fetch_sector_board_daily_history(
+        symbol: str, board_type: str, timeout_seconds: int = 15
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        # 构造足够的历史数据以通过 MA 计算，但日期是旧的
+        dates = pd.date_range(end=stale_date, periods=25, freq="D")
+        df = pd.DataFrame({
+            "日期": dates.strftime("%Y-%m-%d"),
+            "收盘": list(range(1, 26))
+        })
+        return df, df.rename(columns={"日期": "date", "收盘": "close"})
+
+    def fake_save_dataframe_csv(df: pd.DataFrame, path: Path, **kwargs) -> Path:
+        save_calls.append((df, path))
+        return path
+
+    monkeypatch.setattr(app, "get_logger", lambda: logger)
+    monkeypatch.setattr(app, "load_settings", lambda: {
+        "storage": {"raw_dir": "raw", "processed_dir": "proc", "log_dir": "logs"},
+        "network": {"request_timeout_seconds": 10}
+    })
+    monkeypatch.setattr(app, "load_json", lambda _: {"watchlist": []})
+    monkeypatch.setattr(app, "load_market_indices", lambda _: [])
+    monkeypatch.setattr(app, "load_sector_boards", lambda _: {
+        "boards": [{"symbol": "S1", "name": "N1", "board_type": "industry", "enabled": True}]
+    })
+    monkeypatch.setattr(app, "ensure_directory", lambda _: None)
+    monkeypatch.setattr(app, "fetch_sector_board_daily_history", fake_fetch_sector_board_daily_history)
+    monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
+    monkeypatch.setattr(app, "write_daily_report", lambda *args, **kwargs: tmp_path / "report.md")
+    monkeypatch.setattr(app, "get_project_root", lambda: tmp_path)
+
+    result = app.run_daily()
+    assert result == 0
+
+    # 检查生成的 sector_signals.csv
+    sector_df = [df for df, path in save_calls if "sector_signals.csv" in str(path)][0]
+    row = sector_df.iloc[0]
+    assert row["data_status"] == "stale_data"
+    assert row["signal_level"] == "warning"
+    assert "latest board data is stale" in row["error_message"]
+    assert row["date"] == stale_date

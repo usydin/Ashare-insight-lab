@@ -12,8 +12,8 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.2.2 A股指数数据接入`
-- 当前目标：接入 A 股主要指数采集、趋势判断、processed CSV 输出和日报“市场指数观察”章节
+- 阶段名称：`V0.2.3 行业/板块基础数据接入`
+- 当前目标：接入 A 股概念与行业板块采集、趋势判断、processed CSV 输出和日报“行业/板块观察”章节
 - 当前边界：不引入新依赖、不做模拟盘代码、不做 AI Agent 代码、不做 GUI、不做 OpenClaw、不做实盘交易、不自动下单
 
 ## 开发机与部署机分离方案
@@ -213,7 +213,7 @@ python app.py
 - 版权
 - 仓库地址
 - 安全提醒
-- `V0.2.1 Watchlist enhancement is ready.`
+- `V0.2.3 Industry/Sector basic data integration is ready.`
 
 ### 3. 查看版本与项目信息
 

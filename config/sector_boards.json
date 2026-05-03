@@ -1,0 +1,76 @@
+{
+  "version": "0.2.3",
+  "description": "A股智研台行业/板块观察配置",
+  "boards": [
+    {
+      "symbol": "人工智能",
+      "name": "人工智能",
+      "board_type": "concept",
+      "category": "科技成长",
+      "enabled": true,
+      "priority": "high",
+      "observe_reason": "AI主线与科技成长方向观察",
+      "risk_note": "概念板块波动大，注意追高风险"
+    },
+    {
+      "symbol": "半导体",
+      "name": "半导体",
+      "board_type": "industry",
+      "category": "科技成长",
+      "enabled": true,
+      "priority": "high",
+      "observe_reason": "国产替代、科技周期与产业政策观察",
+      "risk_note": "行业估值波动较大"
+    },
+    {
+      "symbol": "新能源车",
+      "name": "新能源车",
+      "board_type": "concept",
+      "category": "先进制造",
+      "enabled": true,
+      "priority": "medium",
+      "observe_reason": "新能源产业链景气度观察",
+      "risk_note": "产业链价格战与盈利压力需关注"
+    },
+    {
+      "symbol": "机器人概念",
+      "name": "机器人概念",
+      "board_type": "concept",
+      "category": "先进制造",
+      "enabled": true,
+      "priority": "medium",
+      "observe_reason": "智能制造与自动化方向观察",
+      "risk_note": "主题炒作属性较强"
+    },
+    {
+      "symbol": "券商概念",
+      "name": "券商概念",
+      "board_type": "concept",
+      "category": "金融",
+      "enabled": true,
+      "priority": "medium",
+      "observe_reason": "券商板块常作为市场风险偏好观察窗口",
+      "risk_note": "强依赖市场成交量与风险偏好"
+    },
+    {
+      "symbol": "银行",
+      "name": "银行",
+      "board_type": "industry",
+      "category": "金融",
+      "enabled": true,
+      "priority": "low",
+      "observe_reason": "稳健资产与大盘权重观察",
+      "risk_note": "弹性相对较低"
+    },
+    {
+      "symbol": "石油石化",
+      "name": "石油石化",
+      "board_type": "industry",
+      "category": "能源化工",
+      "enabled": true,
+      "priority": "medium",
+      "observe_reason": "结合用户石化行业背景，观察能源化工链条",
+      "risk_note": "受国际油价与周期因素影响较大"
+    }
+  ]
+}
