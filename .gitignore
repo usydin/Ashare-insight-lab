@@ -54,3 +54,6 @@ src-tauri/target/
 
 # Tauri generated schemas / cache
 src-tauri/gen/
+
+# Tauri generated schemas / cache
+src-tauri/gen/
