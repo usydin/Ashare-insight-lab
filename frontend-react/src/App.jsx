@@ -5,18 +5,40 @@ import DashboardView from './components/DashboardView';
 import ReportCenterView from './components/ReportCenterView';
 import SettingsView from './components/SettingsView';
 import PlaceholderView from './components/PlaceholderView';
+import MarketIndexView from './components/MarketIndexView';
+import SectorBoardView from './components/SectorBoardView';
+import WatchlistView from './components/WatchlistView';
+import HistoryView from './components/HistoryView';
+import SearchView from './components/SearchView';
 import ReviewQueuePanel from './components/ReviewQueuePanel';
 import DataHealthPanel from './components/DataHealthPanel';
+import SplashScreen from './components/SplashScreen';
 import snapshotData from './data/snapshot.json';
 import './styles.css';
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [data, setData] = useState(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
     // In this sandbox, we import the JSON directly
     setData(snapshotData);
+
+    // Splash screen timing logic
+    const fadeTimer = setTimeout(() => {
+      setIsFadingOut(true);
+    }, 1600); // 1.6s before start fading
+
+    const hideTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2100); // 1.6s + 0.5s transition
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
   }, []);
 
   const renderView = () => {
@@ -25,55 +47,20 @@ function App() {
     switch (activeView) {
       case 'dashboard':
         return <DashboardView data={data} />;
+      case 'market_indices':
+        return <MarketIndexView data={data} />;
+      case 'sector_boards':
+        return <SectorBoardView data={data} />;
+      case 'watchlist':
+        return <WatchlistView data={data} />;
+      case 'history':
+        return <HistoryView data={data} />;
+      case 'search':
+        return <SearchView data={data} />;
       case 'reports':
         return <ReportCenterView data={data} />;
       case 'settings':
         return <SettingsView data={data} />;
-      case 'market_indices':
-        return (
-          <PlaceholderView 
-            id="market_indices" 
-            title="市场指数视图开发中" 
-            icon="📈" 
-            description="正在为您准备实时指数监控面板。" 
-          />
-        );
-      case 'sector_boards':
-        return (
-          <PlaceholderView 
-            id="sector_boards" 
-            title="行业板块视图开发中" 
-            icon="❖" 
-            description="正在构建行业热点与板块轮动分析工具。" 
-          />
-        );
-      case 'watchlist':
-        return (
-          <PlaceholderView 
-            id="watchlist" 
-            title="自选股工作台开发中" 
-            icon="🎯" 
-            description="个性化监控与信号预警中心即将上线。" 
-          />
-        );
-      case 'search':
-        return (
-          <PlaceholderView 
-            id="search" 
-            title="全量搜索开发中" 
-            icon="🔍" 
-            description="支持代码、名称、拼音的全局快速定位。" 
-          />
-        );
-      case 'history':
-        return (
-          <PlaceholderView 
-            id="history" 
-            title="运行历史开发中" 
-            icon="🕒" 
-            description="正在为您同步云端与本地的运行记录。" 
-          />
-        );
       case 'ai':
         return (
           <PlaceholderView 
@@ -119,35 +106,38 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <Sidebar 
-        activeView={activeView} 
-        onViewChange={setActiveView} 
-        version={data?.app?.version} 
-      />
-      
-      <main className="content">
-        <TopBar 
-          title={getTitle()} 
-          snapshotAt={data?.generated_at} 
-          runDate={data?.latest_run?.run_date} 
-          healthStatus={data?.dashboard_summary?.data_health?.risk_item_count > 0 ? 'Risk' : 'OK'}
+    <>
+      {showSplash && <SplashScreen isFadingOut={isFadingOut} />}
+      <div className={`app-container ${!showSplash ? 'ready' : ''}`}>
+        <Sidebar 
+          activeView={activeView} 
+          onViewChange={setActiveView} 
+          version={data?.app?.version} 
         />
-        {renderView()}
-      </main>
-
-      <aside className="details-panel">
-        <ReviewQueuePanel items={data?.review_queue?.items} />
-        <DataHealthPanel health={data?.dashboard_summary?.data_health} />
         
-        <section className="panel-section">
-          <div className="panel-title">🤖 AI 投研摘要</div>
-          <div className="empty-state" style={{ padding: '20px', fontSize: '11px' }}>
-            AI 摘要模块正在开发中。当前显示结构化分析快照。
-          </div>
-        </section>
-      </aside>
-    </div>
+        <main className="content">
+          <TopBar 
+            title={getTitle()} 
+            snapshotAt={data?.generated_at} 
+            runDate={data?.latest_run?.run_date} 
+            healthStatus={data?.dashboard_summary?.data_health?.risk_item_count > 0 ? 'Risk' : 'OK'}
+          />
+          {renderView()}
+        </main>
+
+        <aside className="details-panel">
+          <ReviewQueuePanel items={data?.review_queue?.items} />
+          <DataHealthPanel health={data?.dashboard_summary?.data_health} />
+          
+          <section className="panel-section">
+            <div className="panel-title">🤖 AI 投研摘要</div>
+            <div className="empty-state" style={{ padding: '20px', fontSize: '11px' }}>
+              AI 摘要模块正在开发中。当前显示结构化分析快照。
+            </div>
+          </section>
+        </aside>
+      </div>
+    </>
   );
 }
 

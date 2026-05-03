@@ -38,6 +38,12 @@ body {
   grid-template-columns: 240px 1fr 320px;
   height: 100vh;
   width: 100vw;
+  opacity: 0;
+  transition: opacity 0.5s ease-in;
+}
+
+.app-container.ready {
+  opacity: 1;
 }
 
 @media (max-width: 1200px) {
@@ -569,3 +575,136 @@ aside.details-panel {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-in { animation: fadeIn 0.3s ease-out forwards; }
+
+/* Splash Screen Styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.5s ease-out, visibility 0.5s;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.splash-logo-container {
+  position: relative;
+  margin-bottom: 24px;
+  animation: splashZoom 1.2s ease-out forwards;
+}
+
+.splash-logo {
+  width: 180px;
+  height: auto;
+  filter: drop-shadow(0 4px 20px rgba(0, 113, 227, 0.15));
+}
+
+.splash-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(0, 164, 166, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  animation: splashPulse 2s infinite ease-in-out;
+}
+
+.splash-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  background: linear-gradient(135deg, var(--mac-brand-blue) 0%, var(--mac-brand-teal) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+
+.splash-subtitle {
+  font-size: 12px;
+  color: var(--mac-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin: 0 0 40px;
+}
+
+.splash-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.splash-loading-text {
+  font-size: 11px;
+  color: var(--mac-text-secondary);
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.splash-progress-bar {
+  width: 200px;
+  height: 2px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.splash-progress-inner {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(to right, var(--mac-brand-blue), var(--mac-brand-teal));
+  animation: splashProgress 1.6s ease-in-out forwards;
+}
+
+.splash-footer {
+  position: absolute;
+  bottom: 40px;
+  font-size: 10px;
+  color: var(--mac-text-secondary);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+@keyframes splashZoom {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splashPulse {
+  0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+  50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+}
+
+@keyframes splashProgress {
+  0% { width: 0%; }
+  30% { width: 40%; }
+  60% { width: 75%; }
+  100% { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-logo-container, .splash-glow, .splash-progress-inner {
+    animation: none;
+  }
+  .splash-logo-container { opacity: 1; transform: scale(1); }
+  .splash-progress-inner { width: 100%; }
+}

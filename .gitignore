@@ -45,3 +45,9 @@ tmp/
 *.sqlite3-wal
 data/history/*
 !data/history/.gitkeep
+
+# Frontend & Tauri
+frontend-react/node_modules/
+frontend-react/dist/
+src-tauri/target/
+*.tsbuildinfo
