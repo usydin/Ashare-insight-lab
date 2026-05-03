@@ -10,20 +10,20 @@ __pycache__/
 .DS_Store
 
 # Logs
-logs/*.log
+logs/
+!logs/.gitkeep
 
 # Local data
-data/raw/*
-data/processed/*
-data/sim/*
+data/raw/
+data/processed/
+data/sim/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/sim/.gitkeep
 
 # Reports
-reports/daily/*
-reports/weekly/*
-reports/health/*
+reports/
+!reports/.gitkeep
 !reports/daily/.gitkeep
 !reports/weekly/.gitkeep
 !reports/health/.gitkeep
@@ -43,17 +43,12 @@ tmp/
 *.sqlite3
 *.sqlite3-shm
 *.sqlite3-wal
-data/history/*
+data/history/
 !data/history/.gitkeep
 
 # Frontend & Tauri
 frontend-react/node_modules/
 frontend-react/dist/
 src-tauri/target/
+src-tauri/gen/
 *.tsbuildinfo
-
-# Tauri generated schemas / cache
-src-tauri/gen/
-
-# Tauri generated schemas / cache
-src-tauri/gen/
