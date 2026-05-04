@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="asset/logo/exports/banner/banner1_1440x360.png" alt="A股智研台 | AShare Insight Lab" width="920">
+  <img src="asset/logo/banner1.png" alt="A股智研台 | AShare Insight Lab" width="960">
 </p>
 
 # A股智研台 / AShare Insight Lab
