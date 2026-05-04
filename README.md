@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="asset/logo/exports/banner/banner1_1440x360.png" alt="A股智研台 | AShare Insight Lab" width="100%">
+</p>
+
 # A股智研台 / AShare Insight Lab
 
 ## 项目定位
@@ -12,12 +16,15 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.6.7 Brand Assets Integration`
-- 当前目标：正式接入标准化的 logo、banner 与应用图标，完善 Tauri 桌面端构建链路
+- 阶段名称：`V0.7.2 Data Source Status UI`
+- 当前目标：增强桌面端前端 UI 对数据源状态（在线、缓存兜底、过期缓存、失败）的显式呈现，提升数据可信度透明。
 - 当前特性：
     - **Tauri macOS 桌面端**：基于 Tauri 2.0 的原生桌面外壳。
-    - **品牌资产集成**：V0.6.7 正式接入标准化的 logo、banner 与应用图标。
-    - **自动化打包**：提供 `build_macos.sh` 支持 `.app` 与 `.dmg` (含 fallback 模式) 的一键构建。
+    - **品牌化桌面 UI**：已完成 V0.6.x 阶段的视觉统一。
+    - **数据源管理器基础层**：新增 `DataSourceManager`。
+    - **本地缓存兜底**：实现 AkShare 失败后的自动降级，支持 `cache_fallback` 与 `stale_cache`。
+    - **状态显式标记**：前端 UI 增加数据源状态 Badge 与诊断统计。
+    - **自动化打包**：提供 `build_macos.sh` 一键构建。
 
 ## 开发机与部署机分离方案
 
@@ -89,7 +96,7 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 - **当前阶段不引入平台化重架构**：当前不引入 Vue、FastAPI、MongoDB、Redis、Docker 等平台化重架构。
 - **前端工程化路线已确定**：当前桌面端前端已采用 React + Vite + Tauri。
 - **Node/npm 的职责边界**：Node/npm 仅用于 `frontend-react` 构建与 Tauri 桌面壳，不作为额外后端服务。
-- **长期研究参考**：TradingAgents-CN 的 FastAPI / Vue / MongoDB / Redis / Docker 仅作为长期研究参考，不在当前 V0.6.x 阶段引入。
+- **长期研究参考**：TradingAgents-CN 的多数据源管理思路仅作为架构借鉴，未复制其源码；当前主数据源仍为 AkShare，后续才考虑 Tushare / BaoStock；FastAPI / Vue / MongoDB / Redis / Docker 不在当前 V0.7.x 阶段引入。
 - **保持版权独立**：本项目自有版权仍为 Copyright © 2026 @B‘lock10STUdio。
 
 ## 长期架构方向
@@ -219,7 +226,7 @@ python app.py
 - 版权
 - 仓库地址
 - 安全提醒
-- `V0.3.1 Historical Query & Signal Change Summary is ready.`
+- `V0.7.2 Data Source Status UI is ready.`
 
 ### 3. 查看版本与项目信息
 
@@ -242,6 +249,7 @@ python app.py doctor
 - `requests` / `akshare` 依赖可用性
 - 东方财富基础 URL 连通性
 - 示例股票采集状态
+- 本地缓存兜底配置与缓存可用性
 - Markdown 健康检查报告输出
 
 ### 5. 校验 JSON 配置
@@ -256,7 +264,7 @@ python -m json.tool config/watchlist.json
 后续按以下顺序推进：
 
 1. 完善 `run-daily` 所需的日常执行链路设计
-2. 接入本地数据采集与缓存机制
+2. 继续增强本地数据采集与缓存兜底机制
 3. 建立基础策略信号模块
 4. 完成模拟盘记账与风控约束
 5. 生成日报与复盘报告
@@ -269,3 +277,4 @@ python -m json.tool config/watchlist.json
 - 当前分支：`main`
 - 项目元信息、开发者信息和版权信息已统一管理
 - 版权与项目信息见 `COPYRIGHT.md`、`NOTICE.md` 与 `docs/开发者与项目信息.md`
+- 本地缓存仅用于在线失败时的降级读取，不构成实时行情或投资建议，不做实盘交易
