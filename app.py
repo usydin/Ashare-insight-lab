@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,8 @@ from app_core.data_sources.akshare_provider import (
     summarize_fetch_error,
 )
 from app_core.data_sources.international_news import get_international_news_fetcher
+from app_core.data_sources.kline_provider import AkShareKlineProvider
+from app_core.data_sources.realtime_quote_provider import AkShareRealtimeQuoteProvider
 from app_core.data_sources.manager import DataSourceManager
 from app_core.data_sources.index_provider import fetch_index_daily_history
 from app_core.data_sources.sector_provider import fetch_sector_board_daily_history
@@ -440,6 +443,173 @@ def run_international_news_cli(argv: list[str]) -> int:
         print(f"来源: {item.get('source', '') or '-'}")
         print(f"链接: {item.get('url', '') or '-'}")
 
+    return 0
+
+
+def run_marketaux_status() -> int:
+    """安全检查 Marketaux token 是否已配置，不访问外部 API。"""
+    raw_token = os.getenv("MARKETAUX_API_TOKEN", "").strip()
+    if not raw_token:
+        print("Marketaux 配置状态: 未配置")
+        print('设置方式: export MARKETAUX_API_TOKEN="你的 token"')
+        return 0
+
+    masked_token = _mask_token(raw_token)
+    print("Marketaux 配置状态: 已配置")
+    print(f"Token 显示: {masked_token}")
+    print("国际新闻 CLI: 可用")
+    return 0
+
+
+def run_quote_cli(argv: list[str]) -> int:
+    """打印实时行情快照，不写文件。"""
+    try:
+        symbol = _get_cli_option(argv, "--symbol", required=True)
+        market = _get_cli_option(argv, "--market", default="CN")
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py quote --symbol 600519 --market CN")
+        return 1
+
+    provider = AkShareRealtimeQuoteProvider()
+    quote = provider.fetch_quote(symbol=symbol, market=market)
+
+    status = quote["data_status"]
+    if status == "ok":
+        print(f"股票代码: {quote['symbol']}")
+        print(f"市场: {quote['market']}")
+        print(f"名称: {quote['name']}")
+        print(f"当前价: {quote['price']}")
+        print(f"涨跌额: {quote['change']}")
+        print(f"涨跌幅: {quote['pct_change']}%")
+        print(f"成交量: {quote['volume']}")
+        print(f"成交额: {quote['amount']}")
+        print(f"更新时间: {quote['timestamp']}")
+        print(f"数据状态: {status}")
+        return 0
+    elif status == "not_found":
+        print(f"错误: 未找到股票代码 {symbol} (市场: {market})")
+        return 0
+    elif status == "unsupported_market":
+        print(f"提示: 当前暂不支持市场 {market} 的实时行情，后续接入。")
+        return 0
+    else:
+        print(f"错误: 抓取实时行情失败。状态: {status}")
+        if quote["error_message"]:
+            print(f"详情: {quote['error_message']}")
+        return 0
+
+
+def run_quote_batch_cli(argv: list[str]) -> int:
+    """批量打印实时行情快照，不写文件。"""
+    try:
+        symbols_value = _get_cli_option(argv, "--symbols", required=True)
+        market = _get_cli_option(argv, "--market", default="CN")
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py quote-batch --symbols 600519,300750,000001 --market CN")
+        return 1
+
+    symbols = [symbol.strip() for symbol in symbols_value.split(",") if symbol.strip()]
+    if not symbols:
+        print("参数错误: --symbols 不能为空")
+        print("用法: python3 app.py quote-batch --symbols 600519,300750,000001 --market CN")
+        return 1
+
+    provider = AkShareRealtimeQuoteProvider()
+    quotes = provider.fetch_quotes(symbols=symbols, market=market)
+
+    status_counts = {
+        "ok": 0,
+        "not_found": 0,
+        "fetch_failed": 0,
+        "unsupported_market": 0,
+    }
+
+    for index, quote in enumerate(quotes, start=1):
+        status = str(quote.get("data_status", "fetch_failed"))
+        if status in status_counts:
+            status_counts[status] += 1
+
+        print(f"\n[{index}] 股票代码: {quote.get('symbol', '')}")
+        print(f"名称: {quote.get('name', '') or '-'}")
+        print(f"当前价: {quote.get('price')}")
+        pct_change = quote.get("pct_change")
+        print(f"涨跌幅: {pct_change if pct_change is not None else '-'}%")
+        print(f"成交额: {quote.get('amount')}")
+        print(f"数据状态: {status}")
+        if status != "ok" and quote.get("error_message"):
+            print(f"说明: {quote['error_message']}")
+
+    print("\n[汇总]")
+    print(f"查询数量: {len(quotes)}")
+    print(f"ok 数量: {status_counts['ok']}")
+    print(f"not_found 数量: {status_counts['not_found']}")
+    print(f"fetch_failed 数量: {status_counts['fetch_failed']}")
+    print(f"unsupported_market 数量: {status_counts['unsupported_market']}")
+    return 0
+
+
+def run_kline_cli(argv: list[str]) -> int:
+    """打印 K 线摘要，不写文件。"""
+    try:
+        symbol = _get_cli_option(argv, "--symbol", required=True)
+        market = _get_cli_option(argv, "--market", default="CN")
+        period = _get_cli_option(argv, "--period", default="daily")
+        adjust = _get_cli_option(argv, "--adjust", default="qfq")
+        limit = int(_get_cli_option(argv, "--limit", default="20"))
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py kline --symbol 600519 --market CN --period daily --adjust qfq --limit 20")
+        return 1
+
+    provider = AkShareKlineProvider()
+    result = provider.fetch_kline(
+        symbol=symbol,
+        market=market,
+        period=period,
+        adjust=adjust,
+        limit=limit,
+    )
+
+    status = str(result.get("data_status", "fetch_failed"))
+    rows = result.get("rows", [])
+
+    print(f"股票代码: {result.get('symbol', symbol)}")
+    print(f"市场: {result.get('market', market)}")
+    print(f"周期: {result.get('period', period)}")
+    print(f"复权方式: {result.get('adjust', adjust)}")
+    print(f"数据状态: {status}")
+    print(f"行数: {len(rows)}")
+
+    if status == "ok":
+        print("\n[最近 5 条 K线摘要]")
+        for item in rows[-5:]:
+            print(
+                f"{item.get('date', '-') } / "
+                f"open={item.get('open')} / "
+                f"high={item.get('high')} / "
+                f"low={item.get('low')} / "
+                f"close={item.get('close')} / "
+                f"volume={item.get('volume')}"
+            )
+        return 0
+
+    if status == "unsupported_market":
+        print(f"提示: 当前暂不支持市场 {market} 的 K线数据，后续接入。")
+        return 0
+
+    if status == "unsupported_period":
+        print(f"提示: 当前暂不支持周期 {period}。")
+        return 0
+
+    if status == "not_found":
+        print(f"提示: 未找到 {symbol} 的 K线数据。")
+        return 0
+
+    print("错误: 抓取 K线数据失败。")
+    if result.get("error_message"):
+        print(f"详情: {result['error_message']}")
     return 0
 
 
@@ -968,6 +1138,13 @@ def _get_cli_option(
     return default or ""
 
 
+def _mask_token(token: str) -> str:
+    normalized_token = str(token).strip()
+    if len(normalized_token) <= 4:
+        return "****"
+    return f"****{normalized_token[-4:]}"
+
+
 def main() -> int:
     if len(sys.argv) == 1:
         print_app_info()
@@ -1014,6 +1191,18 @@ def main() -> int:
     if sys.argv[1] == "international-news":
         return run_international_news_cli(sys.argv[2:])
 
+    if sys.argv[1] == "marketaux-status":
+        return run_marketaux_status()
+
+    if sys.argv[1] == "quote":
+        return run_quote_cli(sys.argv[2:])
+
+    if sys.argv[1] == "quote-batch":
+        return run_quote_batch_cli(sys.argv[2:])
+
+    if sys.argv[1] == "kline":
+        return run_kline_cli(sys.argv[2:])
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -1030,6 +1219,10 @@ def main() -> int:
     print("python app.py export-frontend-contract")
     print("python app.py sync-frontend-snapshot")
     print("python app.py international-news --ticker AAPL --market US --hours 72 --limit 3")
+    print("python app.py marketaux-status")
+    print("python app.py quote --symbol 600519 --market CN")
+    print("python app.py quote-batch --symbols 600519,300750,000001 --market CN")
+    print("python app.py kline --symbol 600519 --market CN --period daily --adjust qfq --limit 20")
     return 1
 
 

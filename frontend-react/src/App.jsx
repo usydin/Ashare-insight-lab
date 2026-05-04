@@ -13,6 +13,7 @@ import SearchView from './components/SearchView';
 import ReviewQueuePanel from './components/ReviewQueuePanel';
 import DataHealthPanel from './components/DataHealthPanel';
 import SplashScreen from './components/SplashScreen';
+import RealtimeMarketView from './components/RealtimeMarketView';
 import snapshotData from './data/snapshot.json';
 import './styles.css';
 
@@ -52,6 +53,8 @@ function App() {
     switch (activeView) {
       case 'dashboard':
         return <DashboardView data={data} />;
+      case 'realtime-market':
+        return <RealtimeMarketView />;
       case 'market_indices':
         return <MarketIndexView data={data} />;
       case 'sector_boards':
@@ -103,6 +106,7 @@ function App() {
       search: '全量搜索',
       history: '运行历史',
       reports: '日报中心',
+      'realtime-market': '实时行情',
       ai: 'AI 投研室',
       scenario: '情景推演',
       settings: '偏好设置'
@@ -119,6 +123,7 @@ function App() {
       search: '快照内资产、路径与消息的全局检索。',
       history: '系统运行与快照生成的关键时间轴记录。',
       reports: '自动化分析报告与数据产物矩阵索引。',
+      'realtime-market': '实时行情、K线动态展示与行情报表原型。',
       settings: '控制数据同步频率、环境配置与路径。'
     };
     return descs[activeView] || '';

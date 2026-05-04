@@ -179,6 +179,66 @@ const DashboardView = ({ data }) => {
         ))}
       </section>
 
+      {/* 国际新闻观察 (V0.8.5) */}
+      <section className="section-heading" style={{ marginTop: '32px' }}>
+        🌍 国际新闻观察
+      </section>
+      <section className="news-status-grid animate-in" style={{ animationDelay: '0.25s' }}>
+        <div className="news-status-card">
+          <div className="state-card-header" style={{ marginBottom: '8px' }}>
+            <div className="state-card-title">模块状态：Marketaux</div>
+            <div className="status-pill synced">Manual CLI Mode</div>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">模块接入</span>
+            <span className="meta-value">已接入 CLI</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">当前模式</span>
+            <span className="meta-value">手动触发，不消耗额度</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">数据来源</span>
+            <span className="meta-value">Marketaux API</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">验证状态</span>
+            <span className="meta-value">AAPL 可返回 3 条新闻</span>
+          </div>
+          <div className="meta-row" style={{ border: 'none' }}>
+            <span className="meta-label">覆盖说明</span>
+            <span className="meta-value" style={{ fontSize: '11px' }}>00700.HK 暂无结果，覆盖待研究</span>
+          </div>
+          <div className="news-safe-note">
+            🛡️ 安全边界：不读取/保存 token，Dashboard 不自动触发 API 调用。
+          </div>
+        </div>
+
+        <div className="news-status-card">
+          <div className="state-card-header" style={{ marginBottom: '8px' }}>
+            <div className="state-card-title">CLI 快速测试命令</div>
+            <button 
+              className={`copy-button ${copyStatus.news_cli ? 'success' : ''}`}
+              onClick={() => handleCopy('python3 app.py international-news --ticker AAPL --market US --hours 72 --limit 3', 'news_cli')}
+            >
+              {copyStatus.news_cli ? '✅ 已复制' : '复制命令'}
+            </button>
+          </div>
+          <div className="news-cli-block">
+            <code>
+              python3 app.py international-news \<br/>
+              &nbsp;&nbsp;--ticker AAPL \<br/>
+              &nbsp;&nbsp;--market US \<br/>
+              &nbsp;&nbsp;--hours 72 \<br/>
+              &nbsp;&nbsp;--limit 3
+            </code>
+          </div>
+          <div style={{ marginTop: 'auto', fontSize: '11px', color: 'var(--mac-text-secondary)' }}>
+            提示：在终端执行前请确保已配置 MARKETAUX_API_TOKEN 环境变量。
+          </div>
+        </div>
+      </section>
+
       <section className="tabs-section animate-in" style={{ animationDelay: '0.3s' }}>
         <div className="tabs-header">
           <div 

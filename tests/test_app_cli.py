@@ -1,4 +1,5 @@
 import sys
+from unittest.mock import MagicMock, patch
 
 import app
 
@@ -144,3 +145,335 @@ def test_main_international_news_prints_empty_result_hint(monkeypatch, capsys) -
     assert result == 0
     assert "国际新闻数量: 0" in captured.out
     assert "未获取到相关新闻" in captured.out
+
+
+def test_main_marketaux_status_without_token(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "marketaux-status"])
+    monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Marketaux 配置状态: 未配置" in captured.out
+    assert '设置方式: export MARKETAUX_API_TOKEN="你的 token"' in captured.out
+
+
+def test_main_marketaux_status_masks_token(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "marketaux-status"])
+    monkeypatch.setenv("MARKETAUX_API_TOKEN", "demo-secret-token-1234")
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Marketaux 配置状态: 已配置" in captured.out
+    assert "Token 显示: ****1234" in captured.out
+    assert "国际新闻 CLI: 可用" in captured.out
+    assert "demo-secret-token-1234" not in captured.out
+
+
+def test_main_quote_success(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "quote", "--symbol", "600519", "--market", "CN"])
+    
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "symbol": "600519",
+        "market": "CN",
+        "name": "贵州茅台",
+        "price": 1650.0,
+        "change": 15.5,
+        "pct_change": 0.95,
+        "volume": 10000.0,
+        "amount": 16500000.0,
+        "timestamp": "2026-05-04T15:00:00",
+        "data_status": "ok",
+        "error_message": ""
+    }
+    
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+        
+        assert result == 0
+        assert "股票代码: 600519" in captured.out
+        assert "名称: 贵州茅台" in captured.out
+        assert "当前价: 1650.0" in captured.out
+
+
+def test_main_quote_not_found(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "quote", "--symbol", "999999", "--market", "CN"])
+    
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "symbol": "999999",
+        "market": "CN",
+        "data_status": "not_found",
+        "error_message": "Not found"
+    }
+    
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+        
+        assert result == 0
+        assert "未找到股票代码 999999" in captured.out
+
+
+def test_main_quote_unsupported(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "quote", "--symbol", "AAPL", "--market", "US"])
+    
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "symbol": "AAPL",
+        "market": "US",
+        "data_status": "unsupported_market",
+        "error_message": "Unsupported"
+    }
+    
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+        
+        assert result == 0
+        assert "暂不支持市场 US" in captured.out
+
+
+def test_main_quote_batch_success(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "quote-batch", "--symbols", "600519,300750,000001", "--market", "CN"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_quotes.return_value = [
+        {
+            "symbol": "600519",
+            "name": "贵州茅台",
+            "price": 1650.0,
+            "pct_change": 0.95,
+            "amount": 16500000.0,
+            "data_status": "ok",
+            "error_message": "",
+        },
+        {
+            "symbol": "300750",
+            "name": "宁德时代",
+            "price": 198.5,
+            "pct_change": -1.15,
+            "amount": 992500.0,
+            "data_status": "ok",
+            "error_message": "",
+        },
+        {
+            "symbol": "000001",
+            "name": "上证指数",
+            "price": 3050.25,
+            "pct_change": 0.41,
+            "amount": 8000000.0,
+            "data_status": "ok",
+            "error_message": "",
+        },
+    ]
+
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "股票代码: 600519" in captured.out
+        assert "查询数量: 3" in captured.out
+        assert "ok 数量: 3" in captured.out
+
+
+def test_main_quote_batch_outputs_summary_with_not_found(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "quote-batch", "--symbols", "600519,999999", "--market", "CN"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_quotes.return_value = [
+        {
+            "symbol": "600519",
+            "name": "贵州茅台",
+            "price": 1650.0,
+            "pct_change": 0.95,
+            "amount": 16500000.0,
+            "data_status": "ok",
+            "error_message": "",
+        },
+        {
+            "symbol": "999999",
+            "name": "",
+            "price": None,
+            "pct_change": None,
+            "amount": None,
+            "data_status": "not_found",
+            "error_message": "Symbol 999999 not found",
+        },
+    ]
+
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "not_found 数量: 1" in captured.out
+        assert "ok 数量: 1" in captured.out
+
+
+def test_main_quote_batch_unsupported_market(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "quote-batch", "--symbols", "AAPL,MSFT", "--market", "US"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_quotes.return_value = [
+        {
+            "symbol": "AAPL",
+            "name": "",
+            "price": None,
+            "pct_change": None,
+            "amount": None,
+            "data_status": "unsupported_market",
+            "error_message": "Unsupported market: US",
+        },
+        {
+            "symbol": "MSFT",
+            "name": "",
+            "price": None,
+            "pct_change": None,
+            "amount": None,
+            "data_status": "unsupported_market",
+            "error_message": "Unsupported market: US",
+        },
+    ]
+
+    with patch("app.AkShareRealtimeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "unsupported_market 数量: 2" in captured.out
+        assert "Unsupported market: US" in captured.out
+
+
+def test_main_kline_success(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "kline", "--symbol", "600519", "--market", "CN", "--period", "daily", "--adjust", "qfq", "--limit", "20"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_kline.return_value = {
+        "symbol": "600519",
+        "market": "CN",
+        "period": "daily",
+        "adjust": "qfq",
+        "provider": "AkShare",
+        "data_status": "ok",
+        "error_message": "",
+        "rows": [
+            {"date": "2024-01-01", "open": 10.0, "high": 10.5, "low": 9.8, "close": 10.3, "volume": 1000, "amount": 100000},
+            {"date": "2024-01-02", "open": 10.2, "high": 10.8, "low": 10.1, "close": 10.6, "volume": 1200, "amount": 125000},
+        ],
+    }
+
+    with patch("app.AkShareKlineProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "股票代码: 600519" in captured.out
+        assert "周期: daily" in captured.out
+        assert "行数: 2" in captured.out
+        assert "2024-01-01 / open=10.0" in captured.out
+
+
+def test_main_kline_unsupported_market(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "kline", "--symbol", "AAPL", "--market", "US", "--period", "daily"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_kline.return_value = {
+        "symbol": "AAPL",
+        "market": "US",
+        "period": "daily",
+        "adjust": "qfq",
+        "provider": "AkShare",
+        "data_status": "unsupported_market",
+        "error_message": "Unsupported market: US",
+        "rows": [],
+    }
+
+    with patch("app.AkShareKlineProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "暂不支持市场 US 的 K线数据" in captured.out
+
+
+def test_main_kline_unsupported_period(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "kline", "--symbol", "600519", "--market", "CN", "--period", "5m"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_kline.return_value = {
+        "symbol": "600519",
+        "market": "CN",
+        "period": "5m",
+        "adjust": "qfq",
+        "provider": "AkShare",
+        "data_status": "unsupported_period",
+        "error_message": "Unsupported period: 5m",
+        "rows": [],
+    }
+
+    with patch("app.AkShareKlineProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "暂不支持周期 5m" in captured.out
+
+
+def test_main_kline_fetch_failed(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["app.py", "kline", "--symbol", "600519", "--market", "CN", "--period", "daily"],
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.fetch_kline.return_value = {
+        "symbol": "600519",
+        "market": "CN",
+        "period": "daily",
+        "adjust": "qfq",
+        "provider": "AkShare",
+        "data_status": "fetch_failed",
+        "error_message": "network down",
+        "rows": [],
+    }
+
+    with patch("app.AkShareKlineProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "抓取 K线数据失败" in captured.out
+        assert "network down" in captured.out
+        assert "Traceback" not in captured.out

@@ -6,6 +6,7 @@ const Sidebar = ({ activeView, onViewChange, version }) => {
       label: '总览 (Overview)',
       items: [
         { id: 'dashboard', icon: '📊', label: '总览面板', meta: '核心指标与状态' },
+        { id: 'realtime-market', icon: '⚡', label: '实时行情', meta: '行情与 K线原型' },
       ]
     },
     {

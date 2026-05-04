@@ -1,5 +1,5 @@
-import React from 'react';
 import RefreshDataPanel from './RefreshDataPanel';
+import MarketauxConfigPanel from './MarketauxConfigPanel';
 
 const SettingsView = ({ data }) => {
   if (!data) return (
@@ -45,6 +45,11 @@ const SettingsView = ({ data }) => {
       </section>
 
       <section className="panel-section animate-in" style={{ animationDelay: '0.2s' }}>
+        <div className="section-heading">🌍 国际新闻数据源</div>
+        <MarketauxConfigPanel />
+      </section>
+
+      <section className="panel-section animate-in" style={{ animationDelay: '0.3s' }}>
         <div className="section-heading">🖼️ 品牌资产预览 (Local Brand Assets)</div>
         <div className="state-card">
           <div className="meta-row">
