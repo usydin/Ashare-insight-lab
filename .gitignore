@@ -52,3 +52,6 @@ frontend-react/dist/
 src-tauri/target/
 src-tauri/gen/
 *.tsbuildinfo
+
+# Local generated brand export assets
+asset/logo/exports/
