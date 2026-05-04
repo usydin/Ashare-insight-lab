@@ -35,12 +35,51 @@ const ReportCenterView = ({ data }) => {
     { key: 'sector_signals_csv', name: '板块信号 (CSV)', path: paths?.sector_signals_csv, desc: '当日各行业板块的强弱信号与趋势判断结果。' },
   ];
 
-  const riskCount = dashboard_summary?.data_health?.risk_item_count || 0;
+  const dataHealth = dashboard_summary?.data_health || {};
+  const riskCount = dataHealth.risk_item_count || 0;
   const healthStatus = riskCount > 0 ? 'Risk' : 'Healthy';
 
   return (
     <div id="reportsView" className="view-container active">
-      <div className="section-heading">报告中心摘要</div>
+      <section className="animate-in">
+        <div className="report-card">
+          <div className="report-icon">📑</div>
+          <div className="report-info">
+            <h3>日报中心摘要</h3>
+            <p style={{ color: 'var(--mac-text-secondary)', fontSize: '14px', margin: '4px 0' }}>
+              最近一次运行生成的自动化研究结论与原始信号记录。
+            </p>
+            <div className="report-meta-grid" style={{ marginTop: '12px' }}>
+              <div className="health-list">
+                <div className="health-row">
+                  <span className="health-label">在线正常</span>
+                  <span className="health-value" style={{ color: 'var(--mac-success)' }}>{dataHealth.ok_count || 0}</span>
+                </div>
+                <div className="health-row">
+                  <span className="health-label">采集失败</span>
+                  <span className="health-value" style={{ color: 'var(--mac-danger)' }}>{dataHealth.fetch_failed_count || 0}</span>
+                </div>
+              </div>
+              <div className="health-list">
+                <div className="health-row">
+                  <span className="health-label">缓存兜底</span>
+                  <span className="health-value" style={{ color: 'var(--mac-cyan)' }}>{dataHealth.cache_fallback_count || 0}</span>
+                </div>
+                <div className="health-row">
+                  <span className="health-label">过期缓存</span>
+                  <span className="health-value" style={{ color: 'var(--mac-warning)' }}>{dataHealth.stale_cache_count || 0}</span>
+                </div>
+              </div>
+            </div>
+            {(dataHealth.cache_fallback_count > 0 || dataHealth.stale_cache_count > 0) && (
+              <div className="source-status-note cache" style={{ marginTop: '16px' }}>
+                💡 若出现 cache_fallback 或 stale_cache，说明本次报告部分数据来自本地缓存兜底，应优先复核数据源状态。
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* 摘要区 */}
       <section className="report-summary-grid animate-in">
         <div className="summary-stat-card">

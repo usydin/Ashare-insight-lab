@@ -51,6 +51,8 @@ def build_dashboard_summary(database_path: str | Path | None = None) -> dict[str
         "ok_count": (latest_run["index_count"] + latest_run["sector_count"] + latest_run["stock_count"]) - len(risk_items),
         "fetch_failed_count": change_summary["summary"]["fetch_failed_count"],
         "stale_data_count": change_summary["summary"]["stale_data_count"],
+        "stale_cache_count": change_summary["summary"].get("stale_cache_count", 0),
+        "cache_fallback_count": change_summary["summary"].get("cache_fallback_count", 0),
         "unavailable_count": change_summary["summary"]["unavailable_count"],
         "insufficient_data_count": sum(1 for item in risk_items if item["latest_data_status"] == "insufficient_data"),
         "risk_item_count": len(risk_items)

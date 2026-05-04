@@ -10,7 +10,7 @@ from app_core.analytics.ui_snapshot_schema import (
 def test_validate_ui_snapshot_valid():
     snapshot = {
         "app": {
-            "name_cn": "A股智研台", "name_en": "AShare Insight Lab", "version": "0.6.7",
+            "name_cn": "A股智研台", "name_en": "AShare Insight Lab", "version": "0.7.2",
             "stage": "test", "developer": "pL", "copyright": "test"
         },
         "generated_at": "2026-01-01",

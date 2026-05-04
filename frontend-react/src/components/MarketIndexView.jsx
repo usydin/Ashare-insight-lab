@@ -1,5 +1,17 @@
 import React from 'react';
 
+const renderDataStatus = (status) => {
+  const map = {
+    'ok': { label: '在线正常', className: 'source-status-ok' },
+    'cache_fallback': { label: '缓存兜底', className: 'source-status-cache' },
+    'stale_cache': { label: '过期缓存', className: 'source-status-stale' },
+    'fetch_failed': { label: '采集失败', className: 'source-status-failed' },
+    'unavailable': { label: '不可用', className: 'source-status-failed' }
+  };
+  const config = map[status] || { label: '状态未知', className: 'source-status-unknown' };
+  return <span className={`source-status-badge ${config.className}`}>{config.label}</span>;
+};
+
 const MarketIndexView = ({ data }) => {
   if (!data) return <div className="empty-state">正在初始化数据...</div>;
 
@@ -65,7 +77,7 @@ const MarketIndexView = ({ data }) => {
                       {item.latest_signal}
                     </span>
                   </td>
-                  <td>{item.latest_data_status}</td>
+                  <td>{renderDataStatus(item.latest_data_status)}</td>
                   <td style={{ fontSize: '12px', color: 'var(--mac-text-secondary)' }}>{item.reason}</td>
                   <td style={{ fontSize: '12px' }}>{item.suggested_action}</td>
                 </tr>

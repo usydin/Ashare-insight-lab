@@ -6,6 +6,10 @@ from requests.exceptions import ConnectionError, ProxyError, ReadTimeout, SSLErr
 from app_core.data_sources import akshare_provider
 
 
+def test_akshare_source_name_constant() -> None:
+    assert akshare_provider.SOURCE_NAME == "akshare"
+
+
 def test_fetch_stock_daily_history_passes_timeout_when_supported(monkeypatch) -> None:
     captured_kwargs: dict[str, object] = {}
 

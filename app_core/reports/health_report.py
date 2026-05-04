@@ -22,6 +22,7 @@ def render_health_report(result: dict[str, Any]) -> str:
     connectivity: dict[str, Any] = result.get("connectivity", {})
     sample_fetch: dict[str, Any] = result.get("sample_fetch", {})
     suggestions: list[str] = result.get("suggestions", [])
+    local_cache_status: dict[str, Any] = result.get("local_cache_status", {})
 
     lines = [
         "# A股智研台数据源健康检查报告",
@@ -55,6 +56,35 @@ def render_health_report(result: dict[str, Any]) -> str:
             f"- {dependency_name}: {status} | {dependency.get('message', '-')}"
         )
 
+    lines.extend(
+        [
+            "",
+            "## 数据源管理器状态",
+            "",
+            f"- 主数据源：{result.get('primary_source', '-')}",
+            f"- 注册数据源：{', '.join(result.get('registered_sources', [])) or '-'}",
+            f"- fallback 顺序：{' -> '.join(result.get('fallback_order', [])) or '-'}",
+            f"- fallback 开关：{'enabled' if result.get('fallback_enabled') else 'disabled'}",
+        ]
+    )
+
+    lines.extend(["", "## 本地缓存兜底状态", ""])
+    if local_cache_status:
+        lines.append(f"- enabled：{local_cache_status.get('enabled', False)}")
+        lines.append(f"- available：{local_cache_status.get('available', False)}")
+        lines.append(f"- max_age_days：{local_cache_status.get('max_age_days', '-')}")
+        lines.append(f"- allow_stale：{local_cache_status.get('allow_stale', '-')}")
+        lines.append(f"- stale：{local_cache_status.get('stale', False)}")
+        if local_cache_status.get("path"):
+            lines.append(f"- cache_path：{local_cache_status.get('path')}")
+        if local_cache_status.get("modified_at"):
+            lines.append(f"- cache_modified_at：{local_cache_status.get('modified_at')}")
+        if local_cache_status.get("age_seconds") is not None:
+            lines.append(f"- cache_age_seconds：{local_cache_status.get('age_seconds')}")
+        lines.append(f"- cache_row_count：{local_cache_status.get('row_count', 0)}")
+    else:
+        lines.append("- 无")
+
     lines.extend(["", "## 数据源连通性检查结果", ""])
     if connectivity:
         lines.append(f"- 检测地址：{connectivity.get('url', '-')}")
@@ -70,6 +100,9 @@ def render_health_report(result: dict[str, Any]) -> str:
     if sample_fetch:
         lines.append(f"- 测试股票：{sample_fetch.get('code', '-')}")
         lines.append(f"- 结果：{sample_fetch.get('status', '-')}")
+        if sample_fetch.get("source_name"):
+            lines.append(f"- source_name：{sample_fetch.get('source_name')}")
+        lines.append(f"- fallback_used：{sample_fetch.get('fallback_used', False)}")
         if sample_fetch.get("rows") is not None:
             lines.append(f"- rows：{sample_fetch.get('rows')}")
         if sample_fetch.get("latest_trade_date"):

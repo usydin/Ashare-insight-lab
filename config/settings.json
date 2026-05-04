@@ -1,12 +1,23 @@
 {
   "project_name": "A股智研台",
   "project_name_en": "AShare Insight Lab",
-  "version": "0.1.0-dev",
+  "version": "0.7.2",
   "environment": "development",
   "timezone": "Asia/Shanghai",
   "data_provider": "akshare",
   "network": {
     "request_timeout_seconds": 10
+  },
+  "data_sources": {
+    "primary": "akshare",
+    "fallback_order": ["akshare", "local_cache"],
+    "enable_fallback": true,
+    "health_check_symbol": "000001",
+    "local_cache": {
+      "enabled": true,
+      "max_age_days": 7,
+      "allow_stale": true
+    }
   },
   "diagnostics": {
     "enabled": true,

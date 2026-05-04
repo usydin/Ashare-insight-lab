@@ -46,6 +46,9 @@ def render_daily_report(
         f"- 自选股总数：{summary['total_count']}",
         f"- 成功采集数量：{summary['success_count']}",
         f"- 失败数量：{summary['failed_count']}",
+        f"- 在线成功数量：{summary['online_success_count']}",
+        f"- cache_fallback 数量：{summary['cache_fallback_count']}",
+        f"- stale_cache 数量：{summary['stale_cache_count']}",
         f"- trend_up 数量：{summary['trend_up_count']}",
         f"- trend_down 数量：{summary['trend_down_count']}",
         f"- neutral 数量：{summary['neutral_count']}",
@@ -222,6 +225,12 @@ def _display_value(value: Any) -> str:
 def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
     total_count = len(records)
     failed_count = sum(1 for record in records if record.get("data_status") == "fetch_failed")
+    cache_fallback_count = sum(
+        1 for record in records if record.get("data_status") == "cache_fallback"
+    )
+    stale_cache_count = sum(
+        1 for record in records if record.get("data_status") == "stale_cache"
+    )
     insufficient_data_count = sum(
         1 for record in records if record.get("data_status") == "insufficient_data"
     )
@@ -230,8 +239,10 @@ def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
     neutral_count = sum(
         1
         for record in records
-        if record.get("signal") == "neutral" and record.get("data_status") == "ok"
+        if record.get("signal") == "neutral"
+        and record.get("data_status") in {"ok", "cache_fallback", "stale_cache"}
     )
+    online_success_count = sum(1 for record in records if record.get("data_status") == "ok")
     success_count = total_count - failed_count
     priority_p1_count = sum(1 for record in records if record.get("priority") == "P1")
     priority_p2_count = sum(1 for record in records if record.get("priority") == "P2")
@@ -247,6 +258,9 @@ def _build_summary(records: list[dict[str, Any]]) -> dict[str, int]:
         "total_count": total_count,
         "success_count": success_count,
         "failed_count": failed_count,
+        "online_success_count": online_success_count,
+        "cache_fallback_count": cache_fallback_count,
+        "stale_cache_count": stale_cache_count,
         "trend_up_count": trend_up_count,
         "trend_down_count": trend_down_count,
         "neutral_count": neutral_count,

@@ -6,7 +6,7 @@
 
 ### 多级降级数据链 (Fallback Strategy)
 - **借鉴**: TradingAgents-CN 在实时行情获取上实现了 `stock_bid_ask_em -> stock_zh_a_spot -> stock_zh_a_spot_em -> stock_zh_a_hist` 的降级链。
-- **落地**: A股智研台应在 `data_sources/akshare_provider.py` 中增加类似的 Fallback 逻辑，当主接口受限时自动切换到备用接口。
+- **落地**: A股智研台先建立自有 `DataSourceManager` 基础层，统一承接主数据源选择、健康状态与 fallback 配置，再在后续版本逐步接入真实备用数据源。
 
 ### 统一 Provider 规范
 - **借鉴**: 使用 canonical key 规范化不同数据源（AkShare/Tushare）的字段。
@@ -44,3 +44,5 @@
 
 ## 5. 结论
 TradingAgents-CN 展示了一个成熟的中文金融 Agent Web 终端应具备的深度。A股智研台应保持目前的“桌面原生终端”定位，但在数据可靠性、模型适配灵活性和研报专业度上积极吸收其先进经验。
+
+补充说明：当前 V0.7 仅借鉴其多数据源管理思想，未复制 TradingAgents-CN 的任何专有源码实现。

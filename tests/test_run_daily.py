@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-from requests.exceptions import ProxyError
 
 import app
+from app_core.data_sources.base import DataSourceResult
 
 
 class DummyLogger:
@@ -31,27 +31,40 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     report_records: list[dict[str, object]] = []
     report_kwargs: dict[str, object] = {}
 
-    def fake_fetch_stock_daily_history(
-        symbol: str,
-        timeout_seconds: int = 10,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        fetch_timeouts.append(timeout_seconds)
-        if symbol == "600519":
-            raise ProxyError("proxy error")
+    class FakeManager:
+        def __init__(self, settings=None) -> None:
+            del settings
 
-        raw_dataframe = pd.DataFrame(
-            {
-                "日期": pd.date_range("2024-01-01", periods=25, freq="D"),
-                "收盘": list(range(1, 26)),
-            }
-        )
-        normalized_dataframe = pd.DataFrame(
-            {
-                "date": pd.date_range("2024-01-01", periods=25, freq="D"),
-                "close": list(range(1, 26)),
-            }
-        )
-        return raw_dataframe, normalized_dataframe
+        def fetch_stock_daily_history(self, symbol: str, timeout_seconds: int = 10) -> DataSourceResult:
+            fetch_timeouts.append(timeout_seconds)
+            if symbol == "600519":
+                return DataSourceResult(
+                    source_name="akshare",
+                    ok=False,
+                    error_message="ProxyError: unable to connect to proxy",
+                    error_type="ProxyError",
+                )
+
+            raw_dataframe = pd.DataFrame(
+                {
+                    "日期": pd.date_range("2024-01-01", periods=25, freq="D"),
+                    "收盘": list(range(1, 26)),
+                }
+            )
+            normalized_dataframe = pd.DataFrame(
+                {
+                    "date": pd.date_range("2024-01-01", periods=25, freq="D").strftime("%Y-%m-%d"),
+                    "close": list(range(1, 26)),
+                }
+            )
+            return DataSourceResult(
+                source_name="akshare",
+                ok=True,
+                data={
+                    "raw_dataframe": raw_dataframe,
+                    "normalized_dataframe": normalized_dataframe,
+                },
+            )
 
     def fake_save_dataframe_csv(
         dataframe: pd.DataFrame,
@@ -72,7 +85,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         report_date: str | None = None,
         generated_at: str | None = None,
         output_path: str | Path | None = None,
-        stage_name: str = "V0.6.7 Brand Assets & UI Polish",
+        stage_name: str = "V0.7.2 Data Source Status UI",
         processed_csv_path: str = "daily_signals.csv",
         raw_data_dir: str = "data/raw",
         log_path: str = "logs/app.log",
@@ -188,7 +201,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
     monkeypatch.setattr(app, "load_market_indices", lambda _: [])
     monkeypatch.setattr(app, "load_sector_boards", lambda _: {})
-    monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
+    monkeypatch.setattr(app, "DataSourceManager", FakeManager)
     monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
     monkeypatch.setattr(app, "write_daily_report", fake_write_daily_report)
     monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
@@ -245,7 +258,7 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
     assert failed_row["data_source"] == "akshare"
     assert any(record["code"] == "600519" for record in report_records)
     assert report_kwargs == {
-            "stage_name": "V0.6.7 Brand Assets & UI Polish",
+            "stage_name": "V0.7.2 Data Source Status UI",
             "processed_csv_path": "daily_signals.csv",
             "raw_data_dir": "data/raw",
             "log_path": "logs/app.log",
@@ -265,17 +278,134 @@ def test_run_daily_continues_when_single_symbol_fetch_fails(monkeypatch, tmp_pat
         )
 
 
+def test_run_daily_writes_cache_fallback_row(monkeypatch, tmp_path: Path) -> None:
+    logger = DummyLogger()
+    save_calls: list[tuple[pd.DataFrame, Path]] = []
+
+    class FakeManager:
+        def __init__(self, settings=None) -> None:
+            del settings
+
+        def fetch_stock_daily_history(self, symbol: str, timeout_seconds: int = 10) -> DataSourceResult:
+            del timeout_seconds
+            raw_dataframe = pd.DataFrame(
+                {
+                    "日期": pd.date_range("2024-01-01", periods=25, freq="D"),
+                    "收盘": list(range(1, 26)),
+                }
+            )
+            normalized_dataframe = pd.DataFrame(
+                {
+                    "date": pd.date_range("2024-01-01", periods=25, freq="D").strftime("%Y-%m-%d"),
+                    "close": list(range(1, 26)),
+                }
+            )
+            return DataSourceResult(
+                source_name="local_cache",
+                ok=True,
+                data={
+                    "raw_dataframe": raw_dataframe,
+                    "normalized_dataframe": normalized_dataframe,
+                },
+                error_message="ProxyError: unable to connect to proxy; using local cache fallback",
+                error_type="ProxyError",
+                fallback_used=True,
+                metadata={
+                    "primary_error_message": "ProxyError: unable to connect to proxy",
+                    "cache_path": str(tmp_path / "data" / "raw" / f"{symbol}_daily_raw.csv"),
+                    "cache_age_seconds": 300,
+                    "cache_row_count": 25,
+                    "cache_status": "cache_fallback",
+                    "stale": False,
+                },
+            )
+
+    def fake_save_dataframe_csv(
+        dataframe: pd.DataFrame,
+        relative_path: str | Path,
+        *,
+        index: bool = False,
+    ) -> Path:
+        del index
+        output_path = tmp_path / Path(relative_path).name
+        save_calls.append((dataframe.copy(), output_path))
+        return output_path
+
+    def fake_insert_run_daily_snapshot(**kwargs):
+        return {"database_path": "fake.sqlite3", "run_id": 1, "index_count": 0, "sector_count": 0, "stock_count": 0}
+
+    def fake_write_dashboard_summary_json(**kwargs):
+        return Path("fake_dashboard.json")
+
+    def fake_write_review_queue_outputs(**kwargs):
+        return {"json_path": "fake_review.json", "csv_path": "fake_review.csv", "count": 0}
+
+    def fake_write_ui_snapshot_json(**kwargs):
+        return Path("fake_ui_snapshot.json")
+
+    def fake_validate_ui_snapshot(snapshot):
+        return {"is_valid": True, "error_count": 0, "warning_count": 0, "errors": [], "warnings": []}
+
+    def fake_build_signal_change_summary(**kwargs):
+        return {
+            "latest_run_id": 1,
+            "previous_run_id": None,
+            "index_changes": [],
+            "sector_changes": [],
+            "stock_changes": [],
+            "risk_items": [],
+            "summary": {"index_change_count": 0, "sector_change_count": 0, "stock_change_count": 0, "risk_item_count": 0},
+        }
+
+    monkeypatch.setattr(app, "get_logger", lambda: logger)
+    monkeypatch.setattr(app, "DataSourceManager", FakeManager)
+    monkeypatch.setattr(app, "build_signal_change_summary", fake_build_signal_change_summary)
+    monkeypatch.setattr(app, "load_settings", lambda: {
+        "network": {"request_timeout_seconds": 8},
+        "storage": {"raw_dir": "data/raw", "processed_dir": "data/processed", "log_dir": "logs"},
+    })
+    monkeypatch.setattr(app, "load_json", lambda _: {
+        "watchlist": [{"code": "000001", "name": "平安银行", "market": "SZ", "industry": "银行", "sector": "银行", "enabled": True}]
+    })
+    monkeypatch.setattr(app, "load_market_indices", lambda _: [])
+    monkeypatch.setattr(app, "load_sector_boards", lambda _: {})
+    monkeypatch.setattr(app, "ensure_directory", lambda _: None)
+    monkeypatch.setattr(app, "save_dataframe_csv", fake_save_dataframe_csv)
+    monkeypatch.setattr(app, "write_daily_report", lambda *args, **kwargs: tmp_path / "daily_report.md")
+    monkeypatch.setattr(app, "insert_run_daily_snapshot", fake_insert_run_daily_snapshot)
+    monkeypatch.setattr(app, "write_dashboard_summary_json", fake_write_dashboard_summary_json)
+    monkeypatch.setattr(app, "write_review_queue_outputs", fake_write_review_queue_outputs)
+    monkeypatch.setattr(app, "write_ui_snapshot_json", fake_write_ui_snapshot_json)
+    monkeypatch.setattr(app, "validate_ui_snapshot", fake_validate_ui_snapshot)
+    monkeypatch.setattr(app, "get_project_root", lambda: tmp_path)
+
+    result = app.run_daily()
+
+    processed_dataframe = save_calls[-1][0]
+    row = processed_dataframe.iloc[0]
+
+    assert result == 0
+    assert row["data_status"] == "cache_fallback"
+    assert row["signal_level"] == "positive"
+    assert row["data_source"] == "local_cache"
+    assert row["raw_file_path"] == "data/raw/000001_daily_raw.csv"
+    assert row["latest_trade_date"] == "2024-01-25"
+    assert "在线数据源失败，使用本地缓存兜底" in row["error_message"]
+    assert any("run-daily summary: success_count=1 failed_count=0 trend_up_count=1 trend_down_count=0 neutral_count=0" == message for message in logger.infos)
+
+
 def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) -> None:
     logger = DummyLogger()
     fetch_timeouts: list[int] = []
 
-    def fake_fetch_stock_daily_history(
-        symbol: str,
-        timeout_seconds: int = 10,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        del symbol
-        fetch_timeouts.append(timeout_seconds)
-        raise KeyboardInterrupt
+    class FakeManager:
+        def __init__(self, settings=None) -> None:
+            del settings
+
+        def fetch_stock_daily_history(self, symbol: str, timeout_seconds: int = 10) -> DataSourceResult:
+            del symbol
+            fetch_timeouts.append(timeout_seconds)
+            raise KeyboardInterrupt
 
     monkeypatch.setattr(app, "get_logger", lambda: logger)
     monkeypatch.setattr(
@@ -301,7 +431,7 @@ def test_run_daily_handles_keyboard_interrupt_gracefully(monkeypatch, capsys) ->
     monkeypatch.setattr(app, "ensure_directory", lambda _: None)
     monkeypatch.setattr(app, "load_market_indices", lambda _: [])
     monkeypatch.setattr(app, "load_sector_boards", lambda _: {})
-    monkeypatch.setattr(app, "fetch_stock_daily_history", fake_fetch_stock_daily_history)
+    monkeypatch.setattr(app, "DataSourceManager", FakeManager)
     monkeypatch.setattr(
         app,
         "save_dataframe_csv",

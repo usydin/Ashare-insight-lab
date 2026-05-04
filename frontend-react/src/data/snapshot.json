@@ -2,57 +2,59 @@
   "app": {
     "name_cn": "A股智研台",
     "name_en": "AShare Insight Lab",
-    "version": "0.6.7",
-    "stage": "Brand Assets & UI Polish",
+    "version": "0.7.2",
+    "stage": "Data Source Status UI",
     "developer": "pL",
     "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
   },
-  "generated_at": "2026-05-04T17:55:48",
+  "generated_at": "2026-05-04T21:35:54",
   "latest_run": {
-    "id": 10,
-    "run_date": "2026-05-03",
-    "started_at": "2026-05-03T16:23:36",
-    "finished_at": "2026-05-03T16:25:41",
-    "app_version": "0.3.5",
-    "stage": "Frontend Snapshot Schema Guard",
+    "id": 15,
+    "run_date": "2026-05-04",
+    "started_at": "2026-05-04T21:34:26",
+    "finished_at": "2026-05-04T21:35:50",
+    "app_version": "0.7.2",
+    "stage": "Data Source Status UI",
     "status": "success",
     "index_count": 7,
     "sector_count": 7,
     "stock_count": 3,
-    "report_path": "reports/daily/2026-05-03_daily_report.md",
+    "report_path": "reports/daily/2026-05-04_daily_report.md",
     "processed_csv_path": "data/processed/daily_signals.csv",
     "log_path": "logs/app.log",
-    "created_at": "2026-05-03 16:25:41"
+    "created_at": "2026-05-04 21:35:50"
   },
   "dashboard_summary": {
     "app": {
       "name": "A股智研台",
-      "version": "0.6.7",
-      "stage": "Brand Assets & UI Polish"
+      "version": "0.7.2",
+      "stage": "Data Source Status UI"
     },
     "latest_run": {
-      "id": 10,
-      "run_date": "2026-05-03",
-      "started_at": "2026-05-03T16:23:36",
-      "finished_at": "2026-05-03T16:25:41",
-      "app_version": "0.3.5",
-      "stage": "Frontend Snapshot Schema Guard",
+      "id": 15,
+      "run_date": "2026-05-04",
+      "started_at": "2026-05-04T21:34:26",
+      "finished_at": "2026-05-04T21:35:50",
+      "app_version": "0.7.2",
+      "stage": "Data Source Status UI",
       "status": "success",
       "index_count": 7,
       "sector_count": 7,
       "stock_count": 3,
-      "report_path": "reports/daily/2026-05-03_daily_report.md",
+      "report_path": "reports/daily/2026-05-04_daily_report.md",
       "processed_csv_path": "data/processed/daily_signals.csv",
       "log_path": "logs/app.log",
-      "created_at": "2026-05-03 16:25:41"
+      "created_at": "2026-05-04 21:35:50"
     },
     "data_health": {
-      "ok_count": 16,
-      "fetch_failed_count": 1,
+      "ok_count": 17,
+      "fetch_failed_count": 0,
       "stale_data_count": 0,
+      "stale_cache_count": 0,
+      "cache_fallback_count": 0,
       "unavailable_count": 0,
       "insufficient_data_count": 0,
-      "risk_item_count": 1
+      "risk_item_count": 0
     },
     "signal_overview": {
       "index": {
@@ -61,9 +63,9 @@
         "neutral": 0
       },
       "sector": {
-        "bullish": 5,
+        "bullish": 6,
         "bearish": 0,
-        "neutral": 2
+        "neutral": 1
       },
       "stock": {
         "bullish": 1,
@@ -72,44 +74,21 @@
       }
     },
     "changes": {
-      "latest_run_id": 10,
-      "previous_run_id": 9,
+      "latest_run_id": 15,
+      "previous_run_id": 14,
       "index_change_count": 0,
-      "sector_change_count": 1,
+      "sector_change_count": 0,
       "stock_change_count": 0,
-      "risk_item_count": 1,
-      "top_changes": [
-        {
-          "asset_type": "sector",
-          "symbol": "半导体",
-          "name": "半导体",
-          "previous_signal": "trend_up",
-          "latest_signal": "neutral",
-          "previous_signal_level": "positive",
-          "latest_signal_level": "unavailable",
-          "previous_data_status": "ok",
-          "latest_data_status": "fetch_failed",
-          "date": "",
-          "change_type": "signal_changed"
-        }
-      ]
+      "risk_item_count": 0,
+      "top_changes": []
     },
-    "risk_items": [
-      {
-        "asset_type": "sector",
-        "symbol": "半导体",
-        "name": "半导体",
-        "latest_data_status": "fetch_failed",
-        "error_message": "SSLError: ssl connection failed",
-        "change_type": "risk_status"
-      }
-    ],
+    "risk_items": [],
     "watchlist_focus": {
       "high_priority": [
         {
-          "id": 16,
-          "run_id": 10,
-          "fetch_time": "2026-05-03T16:25:31",
+          "id": 31,
+          "run_id": 15,
+          "fetch_time": "2026-05-04T21:35:40",
           "date": "2026-04-30",
           "code": "000001",
           "name": "平安银行",
@@ -131,12 +110,12 @@
           "data_status": "ok",
           "error_message": "",
           "raw_file_path": "data/raw/000001_daily_raw.csv",
-          "created_at": "2026-05-03 16:25:41"
+          "created_at": "2026-05-04 21:35:50"
         },
         {
-          "id": 17,
-          "run_id": 10,
-          "fetch_time": "2026-05-03T16:25:35",
+          "id": 32,
+          "run_id": 15,
+          "fetch_time": "2026-05-04T21:35:45",
           "date": "2026-04-30",
           "code": "600519",
           "name": "贵州茅台",
@@ -158,15 +137,15 @@
           "data_status": "ok",
           "error_message": "",
           "raw_file_path": "data/raw/600519_daily_raw.csv",
-          "created_at": "2026-05-03 16:25:41"
+          "created_at": "2026-05-04 21:35:50"
         }
       ],
       "holding": [],
       "watching": [
         {
-          "id": 16,
-          "run_id": 10,
-          "fetch_time": "2026-05-03T16:25:31",
+          "id": 31,
+          "run_id": 15,
+          "fetch_time": "2026-05-04T21:35:40",
           "date": "2026-04-30",
           "code": "000001",
           "name": "平安银行",
@@ -188,12 +167,12 @@
           "data_status": "ok",
           "error_message": "",
           "raw_file_path": "data/raw/000001_daily_raw.csv",
-          "created_at": "2026-05-03 16:25:41"
+          "created_at": "2026-05-04 21:35:50"
         },
         {
-          "id": 17,
-          "run_id": 10,
-          "fetch_time": "2026-05-03T16:25:35",
+          "id": 32,
+          "run_id": 15,
+          "fetch_time": "2026-05-04T21:35:45",
           "date": "2026-04-30",
           "code": "600519",
           "name": "贵州茅台",
@@ -215,12 +194,12 @@
           "data_status": "ok",
           "error_message": "",
           "raw_file_path": "data/raw/600519_daily_raw.csv",
-          "created_at": "2026-05-03 16:25:41"
+          "created_at": "2026-05-04 21:35:50"
         },
         {
-          "id": 18,
-          "run_id": 10,
-          "fetch_time": "2026-05-03T16:25:38",
+          "id": 33,
+          "run_id": 15,
+          "fetch_time": "2026-05-04T21:35:47",
           "date": "2026-04-30",
           "code": "300750",
           "name": "宁德时代",
@@ -242,36 +221,36 @@
           "data_status": "ok",
           "error_message": "",
           "raw_file_path": "data/raw/300750_daily_raw.csv",
-          "created_at": "2026-05-03 16:25:41"
+          "created_at": "2026-05-04 21:35:50"
         }
       ]
     }
   },
   "review_queue": {
-    "count": 5,
-    "high_count": 1,
-    "medium_count": 3,
-    "low_count": 1,
+    "count": 4,
+    "high_count": 0,
+    "medium_count": 4,
+    "low_count": 0,
     "items": [
-      {
-        "asset_type": "sector",
-        "symbol": "半导体",
-        "name": "半导体",
-        "priority": "high",
-        "severity": "high",
-        "category": "data_risk",
-        "reason": "数据异常: fetch_failed",
-        "latest_signal": "neutral",
-        "latest_signal_level": "unavailable",
-        "latest_data_status": "fetch_failed",
-        "suggested_action": "检查数据源或人工复核",
-        "source": "history_summary",
-        "rank": 1
-      },
       {
         "asset_type": "sector",
         "symbol": "人工智能",
         "name": "人工智能",
+        "priority": "high",
+        "severity": "medium",
+        "category": "sector_focus",
+        "reason": "重点板块走势观察",
+        "latest_signal": "trend_up",
+        "latest_signal_level": "positive",
+        "latest_data_status": "ok",
+        "suggested_action": "观察板块轮动与强度变化",
+        "source": "latest_snapshot",
+        "rank": 1
+      },
+      {
+        "asset_type": "sector",
+        "symbol": "半导体",
+        "name": "半导体",
         "priority": "high",
         "severity": "medium",
         "category": "sector_focus",
@@ -312,63 +291,38 @@
         "suggested_action": "例行观察个股走势",
         "source": "latest_snapshot",
         "rank": 4
-      },
-      {
-        "asset_type": "sector",
-        "symbol": "半导体",
-        "name": "半导体",
-        "priority": "medium",
-        "severity": "low",
-        "category": "signal_change",
-        "reason": "信号从 trend_up 变为 neutral",
-        "latest_signal": "neutral",
-        "latest_signal_level": "unavailable",
-        "latest_data_status": "fetch_failed",
-        "suggested_action": "复核信号变化并查看最近数据",
-        "source": "history_summary",
-        "rank": 5
       }
     ]
   },
   "signal_changes": {
-    "latest_run_id": 10,
-    "previous_run_id": 9,
+    "latest_run_id": 15,
+    "previous_run_id": 14,
     "summary": {
       "index_change_count": 0,
-      "sector_change_count": 1,
+      "sector_change_count": 0,
       "stock_change_count": 0,
-      "risk_item_count": 1,
-      "fetch_failed_count": 1,
+      "risk_item_count": 0,
+      "fetch_failed_count": 0,
       "stale_data_count": 0,
+      "stale_cache_count": 0,
+      "cache_fallback_count": 0,
       "unavailable_count": 0
     },
-    "top_changes": [
-      {
-        "asset_type": "sector",
-        "symbol": "半导体",
-        "name": "半导体",
-        "previous_signal": "trend_up",
-        "latest_signal": "neutral",
-        "previous_signal_level": "positive",
-        "latest_signal_level": "unavailable",
-        "previous_data_status": "ok",
-        "latest_data_status": "fetch_failed",
-        "date": "",
-        "change_type": "signal_changed"
-      }
-    ]
+    "top_changes": []
   },
   "data_health": {
-    "ok_count": 16,
-    "fetch_failed_count": 1,
+    "ok_count": 17,
+    "fetch_failed_count": 0,
     "stale_data_count": 0,
+    "stale_cache_count": 0,
+    "cache_fallback_count": 0,
     "unavailable_count": 0,
     "insufficient_data_count": 0,
-    "risk_item_count": 1
+    "risk_item_count": 0
   },
   "paths": {
     "database": "data/history/ashare_insight_lab.sqlite3",
-    "daily_report": "reports/daily/2026-05-03_daily_report.md",
+    "daily_report": "reports/daily/2026-05-04_daily_report.md",
     "dashboard_summary_json": "data/processed/dashboard_summary.json",
     "review_queue_json": "data/processed/review_queue.json",
     "review_queue_csv": "data/processed/review_queue.csv",

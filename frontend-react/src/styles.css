@@ -17,6 +17,10 @@
   --mac-radius-md: 10px;
   --mac-radius-sm: 6px;
   --active-nav-bg: rgba(0, 113, 227, 0.08);
+  --mac-warning: #ff9500;
+  --mac-warning-bg: rgba(255, 149, 0, 0.1);
+  --mac-cyan: #55bef9;
+  --mac-cyan-bg: rgba(85, 190, 249, 0.1);
 }
 
 * {
@@ -1163,6 +1167,68 @@ aside.details-panel {
   background: #f5f5f7;
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+/* Source Status Badges */
+.source-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.source-status-ok {
+  background-color: var(--mac-success-bg);
+  color: var(--mac-success);
+}
+
+.source-status-cache {
+  background-color: var(--mac-cyan-bg);
+  color: var(--mac-cyan);
+}
+
+.source-status-stale {
+  background-color: var(--mac-warning-bg);
+  color: var(--mac-warning);
+}
+
+.source-status-failed {
+  background-color: var(--mac-danger-bg);
+  color: var(--mac-danger);
+}
+
+.source-status-unknown {
+  background-color: rgba(142, 142, 147, 0.1);
+  color: var(--mac-text-secondary);
+}
+
+.source-status-note {
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.source-status-note.cache {
+  background-color: var(--mac-cyan-bg);
+  color: var(--mac-cyan);
+  border: 1px solid rgba(85, 190, 249, 0.2);
+}
+
+.source-status-note.stale {
+  background-color: var(--mac-warning-bg);
+  color: var(--mac-warning);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+}
+
+.source-status-note.failed {
+  background-color: var(--mac-danger-bg);
+  color: var(--mac-danger);
+  border: 1px solid rgba(255, 59, 48, 0.2);
 }
 
 /* Animations */

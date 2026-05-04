@@ -9,6 +9,21 @@ def test_render_health_report_contains_key_sections() -> None:
         "environment": "development",
         "python_version": "3.12.13",
         "project_root": "/tmp/project",
+        "primary_source": "akshare",
+        "registered_sources": ["akshare", "local_cache"],
+        "fallback_order": ["akshare", "local_cache"],
+        "fallback_enabled": True,
+        "local_cache_status": {
+            "enabled": True,
+            "available": True,
+            "max_age_days": 7,
+            "allow_stale": True,
+            "stale": False,
+            "path": "/tmp/project/data/raw/000001_daily_raw.csv",
+            "modified_at": "2026-05-01T10:59:00",
+            "age_seconds": 60,
+            "row_count": 120,
+        },
         "proxy_environment": [
             {"name": "HTTP_PROXY", "is_set": True, "value": "http://***:***@proxy.example.com:7890"}
         ],
@@ -38,6 +53,8 @@ def test_render_health_report_contains_key_sections() -> None:
 
     assert "A股智研台数据源健康检查报告" in content
     assert "代理环境变量检查结果" in content
+    assert "本地缓存兜底状态" in content
+    assert "akshare -> local_cache" in content
     assert "总体诊断结论" in content
     assert "degraded" in content
     assert "ProxyError: unable to connect to proxy" in content
@@ -49,6 +66,21 @@ def test_write_health_report_creates_markdown_file(tmp_path: Path) -> None:
         "environment": "development",
         "python_version": "3.12.13",
         "project_root": "/tmp/project",
+        "primary_source": "akshare",
+        "registered_sources": ["akshare", "local_cache"],
+        "fallback_order": ["akshare", "local_cache"],
+        "fallback_enabled": True,
+        "local_cache_status": {
+            "enabled": True,
+            "available": False,
+            "max_age_days": 7,
+            "allow_stale": True,
+            "stale": False,
+            "path": "",
+            "modified_at": "",
+            "age_seconds": None,
+            "row_count": 0,
+        },
         "proxy_environment": [],
         "dependencies": {
             "requests": {"available": True, "message": "requests import ok"},

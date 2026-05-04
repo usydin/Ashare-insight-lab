@@ -125,6 +125,8 @@ def build_signal_change_summary(
         "risk_item_count": len(risk_items),
         "fetch_failed_count": sum(1 for item in risk_items if item["latest_data_status"] == "fetch_failed"),
         "stale_data_count": sum(1 for item in risk_items if item["latest_data_status"] == "stale_data"),
+        "stale_cache_count": sum(1 for item in risk_items if item["latest_data_status"] == "stale_cache"),
+        "cache_fallback_count": sum(1 for item in risk_items if item["latest_data_status"] == "cache_fallback"),
         "unavailable_count": sum(1 for item in risk_items if item["latest_data_status"] == "unavailable"),
     }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TopBar = ({ title, snapshotAt, runDate, healthStatus, status }) => {
+const TopBar = ({ title, snapshotAt, runDate, healthStatus, status, dataHealth = {} }) => {
   const isExpired = () => {
     if (!snapshotAt || snapshotAt === '未知') return true;
     try {
@@ -12,6 +12,15 @@ const TopBar = ({ title, snapshotAt, runDate, healthStatus, status }) => {
       return true;
     }
   };
+
+  const getStatusHint = () => {
+    if (dataHealth.stale_cache_count > 0) return { text: '存在过期缓存数据', type: 'stale' };
+    if (dataHealth.cache_fallback_count > 0) return { text: '部分数据来自本地缓存', type: 'cache' };
+    if (dataHealth.fetch_failed_count > 0) return { text: '存在采集失败项', type: 'failed' };
+    return { text: '数据源状态正常', type: 'ok' };
+  };
+
+  const statusHint = getStatusHint();
 
   const getStatusLabel = () => {
     if (status === 'success') return 'Success';
@@ -40,6 +49,9 @@ const TopBar = ({ title, snapshotAt, runDate, healthStatus, status }) => {
         </div>
         <div style={{ fontSize: '10px', color: 'var(--mac-text-secondary)', marginTop: '4px' }}>
           数据源: <code style={{ background: 'rgba(0,0,0,0.05)', padding: '2px 4px', borderRadius: '3px' }}>frontend-react/src/data/snapshot.json</code>
+          <span style={{ marginLeft: '12px', color: statusHint.type === 'ok' ? 'var(--mac-success)' : '#d93025' }}>
+            [{statusHint.text}]
+          </span>
           <span style={{ 
             marginLeft: '12px', 
             color: expired ? '#d93025' : 'var(--mac-success)', 

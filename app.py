@@ -23,9 +23,10 @@ from app_core.analytics.ui_snapshot_schema import (
 from app_core.analytics.history_summary import build_signal_change_summary
 from app_core.config_loader import load_json, load_settings
 from app_core.data_sources.akshare_provider import (
-    fetch_stock_daily_history,
     summarize_fetch_error,
 )
+from app_core.data_sources.international_news import get_international_news_fetcher
+from app_core.data_sources.manager import DataSourceManager
 from app_core.data_sources.index_provider import fetch_index_daily_history
 from app_core.data_sources.sector_provider import fetch_sector_board_daily_history
 from app_core.diagnostics.data_source_health import run_data_source_health_check
@@ -76,7 +77,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.6.7 Brand Assets & UI Polish is ready.")
+    print("提示: V0.7.2 Data Source Status UI is ready.")
 
 
 def print_version_info() -> None:
@@ -399,10 +400,54 @@ def run_sync_frontend_snapshot() -> int:
         return 1
 
 
+def run_international_news_cli(argv: list[str]) -> int:
+    """打印国际新闻抓取结果，不写文件。"""
+    try:
+        ticker = _get_cli_option(argv, "--ticker", required=True)
+        market = _get_cli_option(argv, "--market", default="US")
+        hours = int(_get_cli_option(argv, "--hours", default="72"))
+        limit = int(_get_cli_option(argv, "--limit", default="3"))
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py international-news --ticker AAPL --market US --hours 72 --limit 3")
+        return 1
+
+    fetcher = get_international_news_fetcher()
+    if not fetcher.is_configured():
+        print("未配置 MARKETAUX_API_TOKEN，请先在终端设置环境变量。")
+        return 1
+
+    news_items = fetcher.fetch_news(
+        ticker=ticker,
+        market=market,
+        hours_ago=hours,
+        limit=limit,
+    )
+
+    print(f"国际新闻数量: {len(news_items)}")
+    if not news_items:
+        print("未获取到相关新闻，可能是代码格式、市场覆盖范围、时间窗口或免费计划限制导致。")
+        return 0
+
+    for index, item in enumerate(news_items, start=1):
+        print(f"\n[{index}] {item.get('title', '')}")
+        print(f"发布时间: {item.get('published_at', '') or '-'}")
+        print(
+            "情绪: "
+            f"{item.get('sentiment', '') or '-'} / "
+            f"{item.get('sentiment_score') if item.get('sentiment_score') is not None else '-'}"
+        )
+        print(f"来源: {item.get('source', '') or '-'}")
+        print(f"链接: {item.get('url', '') or '-'}")
+
+    return 0
+
+
 def run_daily() -> int:
     logger = get_logger()
     try:
         settings = load_settings()
+        data_source_manager = DataSourceManager(settings=settings)
         watchlist_config = load_json("config/watchlist.json")
         market_indices_config = load_market_indices("config/market_indices.json")
         sector_boards_config = load_sector_boards("config/sector_boards.json")
@@ -572,35 +617,60 @@ def run_daily() -> int:
             metadata = _build_watchlist_metadata(item)
 
             try:
-                raw_dataframe, normalized_dataframe = fetch_stock_daily_history(
+                fetch_result = data_source_manager.fetch_stock_daily_history(
                     code,
                     timeout_seconds=timeout_seconds,
                 )
-                raw_path = save_dataframe_csv(
-                    raw_dataframe,
-                    Path(raw_dir) / f"{code}_daily_raw.csv",
-                )
-                raw_relative_path = str(raw_path.relative_to(get_project_root()))
+                if not fetch_result.ok:
+                    raise RuntimeError(fetch_result.error_message)
+
+                raw_dataframe = fetch_result.data["raw_dataframe"]
+                normalized_dataframe = fetch_result.data["normalized_dataframe"]
+                is_cache_fallback = fetch_result.source_name == "local_cache" and fetch_result.fallback_used
+
+                if is_cache_fallback:
+                    raw_relative_path = _to_relative_path(fetch_result.metadata.get("cache_path", ""))
+                else:
+                    raw_path = save_dataframe_csv(
+                        raw_dataframe,
+                        Path(raw_dir) / f"{code}_daily_raw.csv",
+                    )
+                    raw_relative_path = str(raw_path.relative_to(get_project_root()))
 
                 strategy_result = analyze_ma_signal(normalized_dataframe)
+                data_status = strategy_result["data_status"]
+                error_message = strategy_result["error_message"]
+                reason = strategy_result["reason"]
+                latest_trade_date = strategy_result["date"]
+                signal_level = _determine_signal_level(
+                    strategy_result["signal"],
+                    data_status,
+                )
+
+                if is_cache_fallback:
+                    data_status = str(fetch_result.metadata.get("cache_status", "cache_fallback"))
+                    error_message = (
+                        f"在线数据源失败，使用本地缓存兜底：{fetch_result.metadata.get('primary_error_message', fetch_result.error_message)}"
+                    )
+                    reason = "使用本地缓存兜底完成信号计算"
+                    signal_level = _determine_signal_level(strategy_result["signal"], data_status)
+                    metadata["data_source"] = "local_cache"
+
                 record = {
                     **metadata,
                     "fetch_time": fetch_time,
                     "date": strategy_result["date"],
-                    "latest_trade_date": strategy_result["date"],
+                    "latest_trade_date": latest_trade_date,
                     "code": code,
                     "name": name,
                     "close": strategy_result["close"],
                     "ma5": strategy_result["ma5"],
                     "ma20": strategy_result["ma20"],
                     "signal": strategy_result["signal"],
-                    "signal_level": _determine_signal_level(
-                        strategy_result["signal"],
-                        strategy_result["data_status"],
-                    ),
-                    "reason": strategy_result["reason"],
-                    "data_status": strategy_result["data_status"],
-                    "error_message": strategy_result["error_message"],
+                    "signal_level": signal_level,
+                    "reason": reason,
+                    "data_status": data_status,
+                    "error_message": error_message,
                     "raw_file": raw_relative_path,
                     "raw_file_path": raw_relative_path,
                 }
@@ -609,7 +679,9 @@ def run_daily() -> int:
             except KeyboardInterrupt:
                 raise
             except Exception as error:  # pragma: no cover - network/runtime branch
-                message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
+                message = str(error)
+                if not message:
+                    message = summarize_fetch_error(error, timeout_seconds=timeout_seconds)
                 watchlist_records.append(
                     {
                         **metadata,
@@ -791,6 +863,8 @@ def run_daily() -> int:
 def summarize_run_daily_records(records: list[dict[str, Any]]) -> dict[str, int]:
     total_count = len(records)
     failed_count = sum(1 for record in records if record.get("data_status") == "fetch_failed")
+    cache_fallback_count = sum(1 for record in records if record.get("data_status") == "cache_fallback")
+    stale_cache_count = sum(1 for record in records if record.get("data_status") == "stale_cache")
     insufficient_data_count = sum(
         1 for record in records if record.get("data_status") == "insufficient_data"
     )
@@ -799,13 +873,17 @@ def summarize_run_daily_records(records: list[dict[str, Any]]) -> dict[str, int]
     neutral_count = sum(
         1
         for record in records
-        if record.get("signal") == "neutral" and record.get("data_status") == "ok"
+        if record.get("signal") == "neutral" and record.get("data_status") in {"ok", "cache_fallback", "stale_cache"}
     )
+    online_success_count = sum(1 for record in records if record.get("data_status") == "ok")
     success_count = total_count - failed_count
 
     return {
         "total_count": total_count,
         "success_count": success_count,
+        "online_success_count": online_success_count,
+        "cache_fallback_count": cache_fallback_count,
+        "stale_cache_count": stale_cache_count,
         "failed_count": failed_count,
         "trend_up_count": trend_up_count,
         "trend_down_count": trend_down_count,
@@ -815,6 +893,12 @@ def summarize_run_daily_records(records: list[dict[str, Any]]) -> dict[str, int]
 
 
 def _determine_signal_level(signal: str, data_status: str) -> str:
+    if data_status in {"cache_fallback", "stale_cache"}:
+        if signal == "trend_up":
+            return "positive"
+        if signal == "trend_down":
+            return "negative"
+        return "neutral"
     if data_status != "ok":
         return "unavailable"
     if signal == "trend_up":
@@ -866,6 +950,24 @@ def _to_relative_path(path: str | Path) -> str:
     return str(path_object)
 
 
+def _get_cli_option(
+    argv: list[str],
+    option_name: str,
+    *,
+    default: str | None = None,
+    required: bool = False,
+) -> str:
+    if option_name in argv:
+        option_index = argv.index(option_name)
+        next_index = option_index + 1
+        if next_index >= len(argv) or argv[next_index].startswith("--"):
+            raise ValueError(f"参数缺失: {option_name}")
+        return argv[next_index]
+    if required:
+        raise ValueError(f"缺少必填参数: {option_name}")
+    return default or ""
+
+
 def main() -> int:
     if len(sys.argv) == 1:
         print_app_info()
@@ -909,6 +1011,9 @@ def main() -> int:
     if sys.argv[1] == "sync-frontend-snapshot":
         return run_sync_frontend_snapshot()
 
+    if sys.argv[1] == "international-news":
+        return run_international_news_cli(sys.argv[2:])
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -924,6 +1029,7 @@ def main() -> int:
     print("python app.py validate-snapshot")
     print("python app.py export-frontend-contract")
     print("python app.py sync-frontend-snapshot")
+    print("python app.py international-news --ticker AAPL --market US --hours 72 --limit 3")
     return 1
 
 

@@ -16,6 +16,9 @@ except Exception as error:  # pragma: no cover - import failure depends on runti
     AKSHARE_IMPORT_ERROR = error
 
 
+SOURCE_NAME = "akshare"
+
+
 DATE_COLUMN_ALIASES = ("date", "日期", "Date", "trade_date", "交易日期")
 CLOSE_COLUMN_ALIASES = ("close", "收盘", "收盘价", "Close", "latest_close")
 

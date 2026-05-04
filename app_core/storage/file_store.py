@@ -29,6 +29,14 @@ def save_dataframe_csv(
     return file_path
 
 
+def load_dataframe_csv(relative_path: str | Path, **kwargs: object) -> pd.DataFrame:
+    """Load a DataFrame from a project-relative CSV file."""
+    file_path = Path(relative_path)
+    if not file_path.is_absolute():
+        file_path = get_project_root() / file_path
+    return pd.read_csv(file_path, **kwargs)
+
+
 def write_text_file(content: str, relative_path: str | Path) -> Path:
     """Write UTF-8 text to a project-relative file."""
     file_path = Path(relative_path)

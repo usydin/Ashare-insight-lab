@@ -1,5 +1,17 @@
 import React from 'react';
 
+const renderDataStatus = (status) => {
+  const map = {
+    'ok': { label: '在线正常', className: 'source-status-ok' },
+    'cache_fallback': { label: '缓存兜底', className: 'source-status-cache' },
+    'stale_cache': { label: '过期缓存', className: 'source-status-stale' },
+    'fetch_failed': { label: '采集失败', className: 'source-status-failed' },
+    'unavailable': { label: '不可用', className: 'source-status-failed' }
+  };
+  const config = map[status] || { label: '状态未知', className: 'source-status-unknown' };
+  return <span className={`source-status-badge ${config.className}`}>{config.label}</span>;
+};
+
 const WatchlistView = ({ data }) => {
   if (!data) return <div className="empty-state">正在初始化数据...</div>;
 
@@ -69,8 +81,11 @@ const WatchlistView = ({ data }) => {
               {uniqueStocks.length > 0 ? uniqueStocks.map((item, idx) => (
                 <tr key={idx}>
                   <td>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 600 }}>{item.name}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 600 }}>{item.name}</span>
+                        {renderDataStatus(item.data_status)}
+                      </div>
                       <span style={{ fontSize: '10px', color: 'var(--mac-text-secondary)', fontFamily: 'monospace' }}>{item.code}</span>
                     </div>
                   </td>

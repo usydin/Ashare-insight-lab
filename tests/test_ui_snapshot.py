@@ -14,7 +14,7 @@ def test_build_ui_snapshot_empty(temp_db):
     assert snapshot["latest_run"] is None
     assert any("运行记录" in msg for msg in snapshot["messages"])
     app = snapshot["app"]
-    assert app["version"] == "0.6.7"
+    assert app["version"] == "0.7.2"
     assert app["developer"] == "pL"
 
 def test_build_ui_snapshot_with_data(temp_db):
