@@ -76,7 +76,7 @@ def print_app_info() -> None:
     print(f"版权: {COPYRIGHT_TEXT}")
     print(f"仓库地址: {REPOSITORY_URL}")
     print(f"安全提醒: {SAFETY_NOTICE}")
-    print("提示: V0.3.4 Frontend Data Snapshot is ready.")
+    print("提示: V0.6.7 Brand Assets & UI Polish is ready.")
 
 
 def print_version_info() -> None:
@@ -674,7 +674,7 @@ def run_daily() -> int:
             sector_records=sector_records,
             report_date=report_date,
             generated_at=generated_at,
-            stage_name="V0.3.1 run-daily",
+            stage_name=f"V{VERSION} {STAGE}",
             processed_csv_path=_to_relative_path(processed_path),
             raw_data_dir=raw_dir,
             log_path=log_path,

@@ -12,9 +12,12 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 
 ## 当前阶段
 
-- 阶段名称：`V0.3.1 Historical Query & Signal Change Summary`
-- 当前目标：实现基于 SQLite 的历史快照对比，自动识别信号变化与风险项，支持 `changes` 命令
-- 当前边界：不做 UI、不做 Tauri/React 代码、不做模拟盘、不做 AI Agent、不做实盘交易
+- 阶段名称：`V0.6.7 Brand Assets Integration`
+- 当前目标：正式接入标准化的 logo、banner 与应用图标，完善 Tauri 桌面端构建链路
+- 当前特性：
+    - **Tauri macOS 桌面端**：基于 Tauri 2.0 的原生桌面外壳。
+    - **品牌资产集成**：V0.6.7 正式接入标准化的 logo、banner 与应用图标。
+    - **自动化打包**：提供 `build_macos.sh` 支持 `.app` 与 `.dmg` (含 fallback 模式) 的一键构建。
 
 ## 开发机与部署机分离方案
 
@@ -83,7 +86,10 @@ A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟�
 核心约束：
 - **不复制源码**：严禁复制任何第三方 C++ 或 Python 源码。
 - **不复刻 Trade Dress**：不模仿 FinceptTerminal、MiroFish 的界面、视觉风格、终端命令、快捷键及专有词汇。
-- **不引入重依赖**：不引入 LangGraph、Backtrader、Qt6、Redis、Node.js、Vue、Flask、Zep、OASIS、Docker 等。
+- **当前阶段不引入平台化重架构**：当前不引入 Vue、FastAPI、MongoDB、Redis、Docker 等平台化重架构。
+- **前端工程化路线已确定**：当前桌面端前端已采用 React + Vite + Tauri。
+- **Node/npm 的职责边界**：Node/npm 仅用于 `frontend-react` 构建与 Tauri 桌面壳，不作为额外后端服务。
+- **长期研究参考**：TradingAgents-CN 的 FastAPI / Vue / MongoDB / Redis / Docker 仅作为长期研究参考，不在当前 V0.6.x 阶段引入。
 - **保持版权独立**：本项目自有版权仍为 Copyright © 2026 @B‘lock10STUdio。
 
 ## 长期架构方向

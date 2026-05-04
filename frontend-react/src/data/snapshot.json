@@ -2,12 +2,12 @@
   "app": {
     "name_cn": "A股智研台",
     "name_en": "AShare Insight Lab",
-    "version": "0.3.5",
-    "stage": "Frontend Snapshot Schema Guard",
+    "version": "0.6.7",
+    "stage": "Brand Assets & UI Polish",
     "developer": "pL",
     "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
   },
-  "generated_at": "2026-05-04T00:01:03",
+  "generated_at": "2026-05-04T17:55:48",
   "latest_run": {
     "id": 10,
     "run_date": "2026-05-03",
@@ -27,8 +27,8 @@
   "dashboard_summary": {
     "app": {
       "name": "A股智研台",
-      "version": "0.3.5",
-      "stage": "Frontend Snapshot Schema Guard"
+      "version": "0.6.7",
+      "stage": "Brand Assets & UI Polish"
     },
     "latest_run": {
       "id": 10,

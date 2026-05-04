@@ -42,7 +42,12 @@ function App() {
   }, []);
 
   const renderView = () => {
-    if (!data) return <div className="empty-state">Loading...</div>;
+    if (!data) return (
+      <div className="empty-state">
+        <span className="empty-state-icon">🔄</span>
+        正在载入快照数据...
+      </div>
+    );
 
     switch (activeView) {
       case 'dashboard':
@@ -105,10 +110,24 @@ function App() {
     return titles[activeView] || '总览面板';
   };
 
+  const getContextDesc = () => {
+    const descs = {
+      dashboard: '核心市场指标与系统运行状态概览。',
+      market_indices: '监控 A 股核心宽基指数的趋势与信号。',
+      sector_boards: '行业板块强弱监控与异动发现。',
+      watchlist: '核心自选个股的 MA 策略信号跟踪。',
+      search: '快照内资产、路径与消息的全局检索。',
+      history: '系统运行与快照生成的关键时间轴记录。',
+      reports: '自动化分析报告与数据产物矩阵索引。',
+      settings: '控制数据同步频率、环境配置与路径。'
+    };
+    return descs[activeView] || '';
+  };
+
   return (
     <>
       {showSplash && <SplashScreen isFadingOut={isFadingOut} />}
-      <div className={`app-container ${!showSplash ? 'ready' : ''}`}>
+      <div className={`app-shell ${!showSplash ? 'ready' : ''}`}>
         <Sidebar 
           activeView={activeView} 
           onViewChange={setActiveView} 
@@ -126,14 +145,39 @@ function App() {
           {renderView()}
         </main>
 
-        <aside className="details-panel">
+        <aside className="context-panel">
+          <section className="context-card animate-in">
+            <div className="section-heading">📍 页面上下文</div>
+            <div className="sidebar-item-meta" style={{ fontSize: '12px', opacity: 1, color: 'var(--mac-text-primary)', marginBottom: '8px' }}>
+              {getTitle()}
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--mac-text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              {getContextDesc()}
+            </p>
+          </section>
+
+          <section className="context-card animate-in" style={{ animationDelay: '0.1s' }}>
+            <div className="section-heading">🕒 快照状态</div>
+            <div className="meta-row">
+              <span className="meta-label">生成时间</span>
+              <span className="meta-value" style={{ fontSize: '11px' }}>{data?.generated_at?.split('T')[1] || '待同步'}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">运行日期</span>
+              <span className="meta-value">{data?.latest_run?.run_date || '未运行'}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">运行结论</span>
+              <span className={`status-pill ${data?.latest_run?.status || 'unknown'}`}>{data?.latest_run?.status || 'Unknown'}</span>
+            </div>
+          </section>
+
           <ReviewQueuePanel items={data?.review_queue?.items} />
-          <DataHealthPanel health={data?.dashboard_summary?.data_health} />
           
-          <section className="panel-section">
-            <div className="panel-title">🤖 AI 投研摘要</div>
-            <div className="empty-state" style={{ padding: '20px', fontSize: '11px' }}>
-              AI 摘要模块正在开发中。当前显示结构化分析快照。
+          <section className="context-card animate-in" style={{ animationDelay: '0.2s' }}>
+            <div className="section-heading">🤖 AI 辅助</div>
+            <div className="empty-state" style={{ padding: '20px', fontSize: '11px', borderStyle: 'solid', background: 'transparent' }}>
+              AI 摘要模块正在开发中。当前仅显示结构化快照。
             </div>
           </section>
         </aside>
