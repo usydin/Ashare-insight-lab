@@ -6,135 +6,186 @@
 
 ## 项目定位
 
-A股智研台是一个运行在 Mac 本地环境的 A 股智能投研与模拟盘平台，当前阶段聚焦研究、数据整理、策略信号、模拟盘记录与报告生成，不涉及任何实盘自动交易能力。
+A股智研台是一个运行在 macOS 本地环境的 A 股投研辅助平台，当前聚焦以下方向：
 
-本项目当前作为开发骨架使用，目标是先建立清晰、可维护、可验证的目录结构、配置方式与文档体系，为后续 `run-daily` 和策略模块开发打基础。
+- 本地优先
+- 只读行情
+- 投研辅助
+- 数据源状态透明
+- 前后端快照驱动展示
 
-当前 `run-daily` 已具备基础数据采集、均线信号、日报输出和失败不中断能力，并已支持更丰富的 watchlist 元信息字段。
-当前项目已加入统一项目元信息管理，开发者为 pL，版权品牌为 @B‘lock10STUdio。
-当前项目已新增 `check-data-source` / `doctor` 命令，用于检查 AKShare、代理环境与示例股票采集状态。
+当前项目不做自动交易，不接实盘交易，不提供任何交易执行能力。现阶段核心目标是把日常研究、数据采集、状态诊断、前端展示和文档沉淀做扎实，为后续产品化和桌面演示打基础。
 
 ## 当前阶段
 
-- 阶段名称：`V0.7.2 Data Source Status UI`
-- 当前目标：增强桌面端前端 UI 对数据源状态（在线、缓存兜底、过期缓存、失败）的显式呈现，提升数据可信度透明。
-- 当前特性：
-    - **Tauri macOS 桌面端**：基于 Tauri 2.0 的原生桌面外壳。
-    - **品牌化桌面 UI**：已完成 V0.6.x 阶段的视觉统一。
-    - **数据源管理器基础层**：新增 `DataSourceManager`。
-    - **本地缓存兜底**：实现 AkShare 失败后的自动降级，支持 `cache_fallback` 与 `stale_cache`。
-    - **状态显式标记**：前端 UI 增加数据源状态 Badge 与诊断统计。
-    - **自动化打包**：提供 `build_macos.sh` 一键构建。
+- 阶段标签：`V1.0-alpha-stage-freeze-docs`
+- 最新冻结能力基线：`V0.9.7 realtime source status and switch prototype`
+- 最新已知稳定提交：`c4d1dc0 feat: add realtime source status and switch prototype`
 
-## 开发机与部署机分离方案
+当前阶段以“行情源状态控制台 + 本地 Token 管理 + Longbridge 只读接入准备 + React/Tauri 前端展示”为核心，功能上强调透明、安全、可验证，不追求重功能扩张。
 
-项目采用开发机与部署机分离思路：
+## 当前能力概览
 
-- 开发机：当前 Mac mini，仅用于 Trae 开发、代码调试、GitHub 提交、文档维护、结构设计
-- 部署机：未来独立 Mac mini，用于 24 小时运行、正式数据存储、Token 管理、模拟盘记录、报告输出
+### 1. 日报与信号流程
 
-这样做的目的：
+- 支持 `run-daily` 生成本地研究数据、信号结果与日报输出。
+- 支持历史查询、变化摘要、Dashboard 摘要、Review Queue 与 UI Snapshot。
+- 支持 SQLite 本地数据资产沉淀。
 
-- 降低开发环境与运行环境相互影响
-- 避免在开发机长期保存正式数据和敏感信息
-- 方便后续将定时任务、日志和报告稳定迁移到部署机
+### 2. 本地 SQLite 数据资产
+
+- 已建立本地 SQLite 历史库与结构化快照能力。
+- 已支持 `history`、`changes`、`dashboard-summary`、`review-queue`、`ui-snapshot`、`validate-snapshot`。
+- 当前前端静态页面通过 `ui_snapshot` 与 `snapshot.json` 驱动展示。
+
+### 3. 静态前端与 React / Tauri 前端
+
+- 前端采用 `React + Vite`。
+- 桌面端路线保持 `Tauri` 作为原生壳方向。
+- 已完成 Dashboard、实时行情原型、设置页、品牌化界面与 snapshot 同步链路。
+
+### 4. 实时行情与 K 线
+
+- 已支持 AkShare A 股实时行情查询。
+- 已支持 AkShare / 本地 Provider K 线能力。
+- 已提供 `quote`、`quote-batch`、`kline` CLI。
+- 已提供实时行情页的前端原型与数据源状态区。
+
+### 5. 国际新闻
+
+- 已接入 Marketaux 国际新闻源。
+- 已支持 Token 状态检测与新闻 CLI。
+- 国际新闻能力定位为投研辅助，不作为交易信号。
+
+### 6. Token 本地管理
+
+- 已支持 `.env` 自动加载。
+- 已支持本地 Token 状态查看、设置、清空。
+- 已支持 `.secrets` metadata 管理与脱敏显示。
+- 所有 CLI 均只输出脱敏状态，不回显真实 token。
+
+### 7. Longbridge 只读接入准备
+
+- 已完成 Longbridge readonly adapter 基础层。
+- 已支持 legacy API Key 状态识别。
+- 已完成本地 OAuth token 准备层与 OAuthBuilder 研究命令。
+- 已完成 `internal_server_error` 诊断输出增强。
+
+### 8. 数据源状态控制台
+
+- 已新增 `source-status` 多数据源状态摘要。
+- 已将 `source_status` 纳入 `ui_snapshot`。
+- RealtimeMarketView 已增加行情源状态与切换视觉原型。
+- SettingsView 已区分 API Token 状态与数据源状态。
+
+## 当前默认数据源
+
+- `AkShare`：默认 A 股实时行情源
+- `Marketaux`：国际新闻源
+- `Longbridge`：候选只读行情源，当前 OAuth 阻塞
+- `Tushare`：预留数据源
+
+## CLI 命令总览
+
+### 基础
+
+```bash
+python3 app.py doctor
+python3 app.py run-daily
+python3 app.py history
+```
+
+### 实时行情
+
+```bash
+python3 app.py quote --symbol 600519 --market CN
+python3 app.py quote-batch --symbols 600519,300750,000001 --market CN
+python3 app.py kline --symbol 600519 --market CN --period daily --adjust qfq --limit 20
+python3 app.py source-status
+```
+
+### 新闻
+
+```bash
+python3 app.py marketaux-status
+python3 app.py international-news --ticker AAPL --market US --hours 72 --limit 3
+```
+
+### Token
+
+```bash
+python3 app.py token-status
+python3 app.py token-set --key MARKETAUX_API_TOKEN
+python3 app.py token-clear --key MARKETAUX_API_TOKEN
+```
+
+### Longbridge
+
+```bash
+python3 app.py longbridge-status
+python3 app.py longbridge-sdk-status
+python3 app.py longbridge-quote --symbol 600519 --market CN
+python3 app.py longbridge-oauth-status
+python3 app.py longbridge-oauth-help
+python3 app.py longbridge-oauth-start
+python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
+python3 app.py longbridge-oauth-set
+python3 app.py longbridge-oauth-clear
+```
+
+### UI
+
+```bash
+python3 app.py ui-snapshot
+python3 app.py validate-snapshot
+python3 app.py sync-frontend-snapshot
+```
 
 ## 安全边界
 
-第一阶段明确遵守以下边界：
+项目当前明确遵守以下边界：
 
-- 只做本地数据采集、策略信号、本地模拟盘、日报生成、复盘报告
-- 不做实盘自动交易
-- 不做自动下单
-- 不模拟点击东方财富、同花顺、券商客户端
-- 不绕过验证码、登录风控或平台限制
-- 不抓包复刻交易接口
+- 只读行情
+- 不接交易
+- 不导入 `TradeContext`
+- 不读资产 / 持仓 / 订单
+- 不下单 / 撤单 / 改单
+- token 只保存在本地 `.env` / `.secrets`
+- `.env` / `.secrets` / `data` / `logs` / `reports` / `dist` / `target` 禁止提交
 
-仓库安全约束：
+仓库中所有 CLI、快照、前端 JSON 和文档只允许出现脱敏状态，不允许写入真实 token、完整 OAuth URL 或 App Secret。
 
-- 不提交 `.env`
-- 不提交 token、API key
-- 不提交数据库文件
-- 不提交日志文件
-- 不提交真实原始数据、处理后数据和正式模拟盘记录
+## Longbridge 当前状态
 
-## 技术路线
+当前 Longbridge OpenAPI 只作为候选只读行情源，不作为默认行情源：
 
-当前技术路线保持轻量，优先保证可维护性：
+- SDK `4.0.5` 已安装并可导入
+- `Config` / `QuoteContext` / `OAuthBuilder` 可用
+- `OAuthBuilder` 可生成授权 URL
+- 浏览器授权页当前返回 `Authorization Failed / internal_server_error`
+- 当前尚未获得 OAuth token
+- 当前问题判断更接近 Longbridge OAuth 服务端、OAuth client 配置、`redirect_uri` 或账号权限侧问题
+- 默认行情源仍为 `AkShare`
 
-- 语言：Python 3.12
-- 底层核心：由 Python 平台实现数据采集、数据存储、策略信号、模拟盘、风控和报告
-- 依赖管理：`requirements.txt`
-- 配置管理：`config/settings.json`、`config/watchlist.json`
-- 元信息管理：`app_core/project_info.py`
-- 数据目录：`data/raw`、`data/processed`、`data/sim`
-- 报告目录：`reports/daily`、`reports/weekly`
-- 核心代码组织：`app_core/`
-- AI 与自动化扩展：后续接入 OpenClaw，作为本地 AI Agent 与自动化调度层
-- 启动方式：`python app.py`
-- 诊断命令：`python app.py check-data-source` / `python app.py doctor`
+## 开发与验证命令
 
-本阶段不引入复杂框架，不做过度封装，以清晰目录和明确职责为主。
+常用验证命令如下：
 
-## 开源项目研究与借鉴
+```bash
+source .venv/bin/activate
+python3 -m pytest
+python3 app.py source-status
+python3 app.py token-status
+python3 app.py validate-snapshot
+cd frontend-react && npm run build
+```
 
-当前已完成对三个第三方开源项目的深度研究梳理，详细文档见 `docs/research/`：
+前端本地开发命令：
 
-- **TradingAgents**
-  - 研究重点：多智能体投研流程、角色分层、结构化输出、决策记忆与风控审查思路。
-  - 借鉴价值：AI 多智能体投研大脑。
-- **FinceptTerminal**
-  - 研究重点：金融终端产品形态、模块组织、DataHub 思路、数据连接器体系与工作台规划方式。
-  - 借鉴价值：金融终端产品外壳与平台组织方式。
-- **MiroFish**
-  - 研究重点：多智能体情景推演、五阶段实验流程、事件传播模拟与研究边界。
-  - 借鉴价值：情景推演沙盒与 Scenario Lab 设计思路。
-
-核心约束：
-- **不复制源码**：严禁复制任何第三方 C++ 或 Python 源码。
-- **不复刻 Trade Dress**：不模仿 FinceptTerminal、MiroFish 的界面、视觉风格、终端命令、快捷键及专有词汇。
-- **当前阶段不引入平台化重架构**：当前不引入 Vue、FastAPI、MongoDB、Redis、Docker 等平台化重架构。
-- **前端工程化路线已确定**：当前桌面端前端已采用 React + Vite + Tauri。
-- **Node/npm 的职责边界**：Node/npm 仅用于 `frontend-react` 构建与 Tauri 桌面壳，不作为额外后端服务。
-- **长期研究参考**：TradingAgents-CN 的多数据源管理思路仅作为架构借鉴，未复制其源码；当前主数据源仍为 AkShare，后续才考虑 Tushare / BaoStock；FastAPI / Vue / MongoDB / Redis / Docker 不在当前 V0.7.x 阶段引入。
-- **保持版权独立**：本项目自有版权仍为 Copyright © 2026 @B‘lock10STUdio。
-
-## 长期架构方向
-
-三项目研究阶段已正式收敛到 `docs/architecture/` 下的长期架构文档，作为后续 V0.2 及更长期迭代的统一参考入口。
-
-建议优先阅读：
-
-- `docs/architecture/A股智研台长期架构总览.md`
-- `docs/architecture/模块分层与职责边界.md`
-- `docs/architecture/三项目融合路线图.md`
-- `docs/architecture/V0.2功能路线说明.md`
-- `docs/architecture/安全边界与许可证总原则.md`
-
-## OpenClaw 接入定位
-
-OpenClaw 不是本项目的底层交易核心，也不负责替代 Python 平台内部的数据、策略或模拟盘能力。
-
-本项目的底层核心由 Python 平台实现，负责以下基础能力：
-
-- 数据采集
-- 数据存储
-- 策略信号
-- 模拟盘
-- 风控
-- 报告
-
-OpenClaw 的长期定位是后续接入的本地 AI Agent 与自动化调度层，建立在 Python 平台之上，主要承担以下职责：
-
-- 定时触发数据采集任务
-- 汇总 A 股、美股、港股和全球宏观信息
-- 读取本地策略信号和模拟盘结果
-- 生成盘前、盘后、周报和复盘摘要
-- 对交易建议进行风险解释和反方审查
-- 监控数据源异常、任务失败和模拟盘异常回撤
-- 作为本地 AI 交互入口
-
-因此，OpenClaw 更适合作为“调度、解释、汇总、监控、交互”层，而不是交易执行核心。
+```bash
+cd frontend-react
+npm run dev
+```
 
 ## 目录结构
 
@@ -144,137 +195,39 @@ ashare-insight-lab/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
-├── config/
-│   ├── settings.json
-│   └── watchlist.json
 ├── app_core/
-│   ├── __init__.py
-│   ├── config_loader.py
-│   ├── path_utils.py
-│   ├── ai_assistant/
-│   ├── data_sources/
-│   ├── reports/
-│   ├── scheduler/
-│   ├── simulator/
-│   ├── storage/
-│   └── strategies/
+├── config/
 ├── docs/
-│   ├── 项目说明.md
-│   ├── 当前阶段进展.md
-│   ├── 安全边界.md
-│   ├── 开发计划.md
-│   ├── 模拟盘规则.md
-│   ├── 数据安全与账号隔离.md
-│   ├── 开发机与部署机分离方案.md
-│   ├── 部署说明.md
-│   └── AI协作规则.md
+├── frontend-react/
 ├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── sim/
 ├── logs/
 └── reports/
-    ├── daily/
-    └── weekly/
 ```
 
-## 第一阶段目标
+## 文档入口
 
-第一阶段聚焦以下五项：
+建议从以下文档继续了解当前冻结状态：
 
-1. 本地数据采集
-2. 策略信号生成
-3. 本地模拟盘记录
-4. 日报生成
-5. 复盘报告整理
+- `docs/当前阶段进展.md`
+- `docs/版本记录.md`
+- `docs/data/实时行情源状态与切换说明.md`
+- `docs/stage_freeze/V1.0-alpha-行情源控制台阶段冻结说明.md`
+- `docs/demo/V1.0-alpha-演示操作说明.md`
 
-阶段目标强调“研究与验证”，不强调“自动执行交易”。
+## 后续路线
 
-## 运行方式
+下一阶段建议按以下顺序推进：
 
-### 1. 准备环境
-
-确保已经完成：
-
-- Python 3.12 虚拟环境创建
-- `requirements.txt` 安装完成
-- VS Code 或 Trae 已指向 `.venv/bin/python`
-
-如在普通终端中运行，建议先激活虚拟环境：
-
-```bash
-source .venv/bin/activate
-```
-
-### 2. 启动项目
-
-在项目根目录执行：
-
-```bash
-python app.py
-```
-
-启动后将输出：
-
-- 项目名称
-- 英文名称
-- 版本号
-- 当前环境
-- 项目根目录
-- 当前时间
-- 开发者
-- 版权
-- 仓库地址
-- 安全提醒
-- `V0.7.2 Data Source Status UI is ready.`
-
-### 3. 查看版本与项目信息
-
-```bash
-python app.py --version
-python app.py about
-```
-
-### 4. 执行数据源健康检查
-
-```bash
-python app.py check-data-source
-python app.py doctor
-```
-
-该命令会检查：
-
-- Python 与项目运行信息
-- 代理环境变量
-- `requests` / `akshare` 依赖可用性
-- 东方财富基础 URL 连通性
-- 示例股票采集状态
-- 本地缓存兜底配置与缓存可用性
-- Markdown 健康检查报告输出
-
-### 5. 校验 JSON 配置
-
-```bash
-python -m json.tool config/settings.json
-python -m json.tool config/watchlist.json
-```
-
-## 后续计划
-
-后续按以下顺序推进：
-
-1. 完善 `run-daily` 所需的日常执行链路设计
-2. 继续增强本地数据采集与缓存兜底机制
-3. 建立基础策略信号模块
-4. 完成模拟盘记账与风控约束
-5. 生成日报与复盘报告
-6. 规划 OpenClaw 接入方式，使其承担本地 AI 调度、摘要生成、风险解释和异常监控
-7. 逐步为部署机准备独立运行方案
-8. 持续增强数据源诊断、错误提示和运行稳定性
+1. 前端行情源切换交互增强
+2. 联系 Longbridge OpenAPI 支持并完成 OAuth 复测
+3. 数据源健康评分与状态排序
+4. Tushare 接入评估
+5. OpenAI Key 后续用于 AI 摘要 / 研报
+6. Tauri 桌面演示包打包
 
 ## 说明
 
 - 当前分支：`main`
-- 项目元信息、开发者信息和版权信息已统一管理
-- 版权与项目信息见 `COPYRIGHT.md`、`NOTICE.md` 与 `docs/开发者与项目信息.md`
-- 本地缓存仅用于在线失败时的降级读取，不构成实时行情或投资建议，不做实盘交易
+- 开发者：`pL`
+- 版权品牌：`@B‘lock10STUdio`
+- 项目当前强调研究、验证、展示与安全边界，不提供自动交易能力
