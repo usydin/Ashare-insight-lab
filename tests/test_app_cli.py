@@ -689,7 +689,7 @@ def test_main_longbridge_status_auto_loads_env(monkeypatch, capsys, tmp_path) ->
                 assert result == 0
                 assert "LONGBRIDGE_APP_KEY: present" in captured.out
                 assert "LONGBRIDGE_APP_SECRET: present" in captured.out
-                assert "auth_mode_candidate: oauth_required" in captured.out
+                assert "auth_mode_candidate: oauthbuilder_required" in captured.out
 
 
 def test_main_longbridge_oauth_help(monkeypatch, capsys) -> None:
@@ -778,6 +778,58 @@ def test_main_longbridge_oauth_start_sdk_missing(monkeypatch, capsys, tmp_path) 
         assert "Traceback" not in captured.out
 
 
+def test_main_longbridge_oauth_start_internal_server_error_diagnostics(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-start"])
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "demo-key")
+    monkeypatch.setattr(
+        app,
+        "start_longbridge_oauth",
+        lambda client_id, store: {
+            "status": "oauth_failed",
+            "message": "OpenApiException: OAuth authorization failed: internal_server_error",
+            "diagnostics": {
+                "error_type": "internal_server_error",
+                "likely_stage": "authorization_server",
+                "sdk_importable": True,
+                "sdk_version": "4.0.5",
+                "client_id_present": True,
+                "redirect_uri_host": "localhost",
+                "redirect_uri_scheme": "http",
+                "quote_only": True,
+                "trade_enabled": False,
+                "next_steps": [
+                    "检查长桥开发者后台是否启用 OAuth 2.0",
+                    "确认 App Key 是否可作为 OAuth client_id 使用",
+                ],
+            },
+        },
+    )
+    monkeypatch.setattr(
+        app,
+        "inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "sdk_version": "4.0.5",
+            "available_symbols": {"Config": True, "QuoteContext": True, "OAuthBuilder": True},
+            "error_message": "",
+        },
+    )
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "oauth: oauth_failed" in captured.out
+        assert "error_type: internal_server_error" in captured.out
+        assert "likely_stage: authorization_server" in captured.out
+        assert "quote_only: true" in captured.out
+        assert "trade_enabled: false" in captured.out
+        assert "state=" not in captured.out
+        assert "token" not in captured.out.lower()
+        assert "App Secret" not in captured.out
+
+
 def test_main_longbridge_oauth_start_app_key_missing(monkeypatch, capsys, tmp_path) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-start"])
     monkeypatch.delenv("LONGBRIDGE_APP_KEY", raising=False)
@@ -824,6 +876,17 @@ def test_main_longbridge_oauth_quote_sdk_missing(monkeypatch, capsys, tmp_path) 
         assert "数据状态: sdk_missing" in captured.out
         assert "Longbridge SDK missing" in captured.out
         assert "Traceback" not in captured.out
+
+
+def test_main_longbridge_oauth_help_no_tradecontext_runtime_usage(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-help"])
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "QuoteContext" in captured.out
+    assert "TradeContext" not in captured.out
 
 
 def test_main_longbridge_quote_oauth_required(monkeypatch, capsys) -> None:

@@ -84,6 +84,22 @@ python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 - A 股行情权限可能受账户自身行情权限影响
 - 实测时 `00700.HK` / `AAPL.US` 可能比 A 股更容易先验证
 
+## 真实授权失败记录：internal_server_error
+
+- 日期：2026-05-05
+- 环境：macOS arm64
+- Python：3.12.13
+- SDK：longbridge 4.0.5
+- SDK 状态：Config / QuoteContext / OAuthBuilder 均可用
+- TradeContext：未导入、未调用
+- 现象：OAuthBuilder 能生成授权 URL，浏览器授权页返回 `Authorization Failed / internal_server_error`
+- 本地 OAuth token 文件：未生成
+- `.secrets/longbridge_oauth_token.json`：不存在
+- Git 状态：clean
+- 安全扫描：无输出
+- 结论：失败发生在授权服务端 / OAuth client 配置 / redirect_uri / 账号权限侧，尚未进入 QuoteContext 行情请求阶段
+- 后续建议：联系 Longbridge OpenAPI 支持，或检查开发者后台 OAuth 配置、redirect_uri 和账号权限
+
 ## 禁止事项
 
 - 禁止接入 TradeContext

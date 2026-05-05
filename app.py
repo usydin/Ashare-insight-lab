@@ -718,6 +718,10 @@ def run_longbridge_oauth_help() -> int:
     print("- 暂时不要把 token 发到聊天窗口、日志或提交记录中。")
     print("- 可先执行 python3 app.py longbridge-oauth-status 查看本地状态。")
     print("- 可执行 python3 app.py longbridge-oauth-start 研究真实授权启动链路。")
+    print("- 已知问题: 如果授权页显示 Authorization Failed / internal_server_error，说明请求已到达 Longbridge OAuth 授权服务端。")
+    print("- 优先排查: OAuth client 是否启用、App Key 是否等同 OAuth client_id、redirect_uri 是否需要登记。")
+    print("- 继续排查: 当前账号/地区/行情权限是否支持 OAuthBuilder，或 Longbridge OAuth 服务端是否存在临时异常。")
+    print("- 不要发送 App Secret / Token / 完整授权 URL；可向支持方提供脱敏诊断摘要。")
     return 0
 
 
@@ -726,12 +730,31 @@ def run_longbridge_oauth_start() -> int:
     client_id = os.getenv("LONGBRIDGE_APP_KEY", "").strip()
     store = LongbridgeOAuthStore()
     result = start_longbridge_oauth(client_id=client_id, store=store)
+    sdk_status = inspect_longbridge_sdk()
 
     print("provider: longbridge")
     print(f"oauth: {result['status']}")
-    print(f"sdk_token_cache: {result.get('sdk_token_cache', 'unknown')}")
-    print("quote_only: true")
-    print("trade_enabled: false")
+    diagnostics = result.get("diagnostics")
+    if diagnostics:
+        print(f"error_type: {diagnostics['error_type']}")
+        print(f"likely_stage: {diagnostics['likely_stage']}")
+        print(f"sdk_importable: {'yes' if diagnostics['sdk_importable'] else 'no'}")
+        print(f"sdk_version: {diagnostics['sdk_version']}")
+        print(f"client_id_present: {str(diagnostics['client_id_present']).lower()}")
+        print(f"redirect_uri_host: {diagnostics['redirect_uri_host']}")
+        print(f"redirect_uri_scheme: {diagnostics['redirect_uri_scheme']}")
+        print("quote_only: true")
+        print("trade_enabled: false")
+        print("next_steps:")
+        for item in diagnostics["next_steps"]:
+            print(f"- {item}")
+    else:
+        print(f"sdk_importable: {'yes' if sdk_status['sdk_importable'] else 'no'}")
+        print(f"sdk_version: {sdk_status['sdk_version']}")
+        print(f"client_id_present: {str(bool(client_id)).lower()}")
+        print(f"sdk_token_cache: {result.get('sdk_token_cache', 'unknown')}")
+        print("quote_only: true")
+        print("trade_enabled: false")
     if result.get("message"):
         print(f"message: {result['message']}")
     return 0
