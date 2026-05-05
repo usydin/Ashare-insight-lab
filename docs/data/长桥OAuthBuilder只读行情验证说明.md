@@ -100,6 +100,13 @@ python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 - 结论：失败发生在授权服务端 / OAuth client 配置 / redirect_uri / 账号权限侧，尚未进入 QuoteContext 行情请求阶段
 - 后续建议：联系 Longbridge OpenAPI 支持，或检查开发者后台 OAuth 配置、redirect_uri 和账号权限
 
+## 当前阶段补充说明
+
+- 当前用户决定暂缓前端实时行情卡片增强。
+- 等 Longbridge OAuth 授权问题解决后，再把 Longbridge 真实只读行情一起接入前端实时行情。
+- 当前已新增面向 Longbridge OpenAPI 支持的脱敏排查材料文档：`docs/data/长桥OpenAPI支持排查材料.md`
+- 当前前端中的行情源切换仍为视觉原型，不改变真实后端数据源。
+
 ## 禁止事项
 
 - 禁止接入 TradeContext
