@@ -41,6 +41,24 @@ class LongbridgeOAuthStore:
         self._write_token_json(payload)
         return self.get_oauth_token_status()
 
+    def save_oauth_metadata(self, data: dict[str, Any]) -> dict[str, Any]:
+        existing = self.read_oauth_token() or {}
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        payload = {
+            "provider": "longbridge",
+            "auth_type": "oauth2",
+            "access_token": str(existing.get("access_token", "")).strip(),
+            "refresh_token": str(existing.get("refresh_token", "")).strip(),
+            "expires_at": str(data.get("expires_at", existing.get("expires_at", ""))).strip(),
+            "scope": str(data.get("scope", existing.get("scope", "quote"))).strip() or "quote",
+            "created_at": str(existing.get("created_at") or data.get("created_at") or now),
+            "updated_at": now,
+            "note": str(data.get("note", existing.get("note", "quote only"))).strip() or "quote only",
+            "sdk_managed": bool(data.get("sdk_managed", existing.get("sdk_managed", False))),
+        }
+        self._write_token_json(payload)
+        return self.get_oauth_token_status()
+
     def clear_oauth_token(self) -> dict[str, Any]:
         if self.token_path.exists():
             self.token_path.unlink()
@@ -70,6 +88,8 @@ class LongbridgeOAuthStore:
             "status": "missing",
             "token_path": str(self.token_path),
             "note": "quote only",
+            "scope": "quote",
+            "sdk_managed": False,
         }
 
         if not self.token_path.exists():
@@ -96,6 +116,8 @@ class LongbridgeOAuthStore:
                 "updated_at": updated_at,
                 "masked_access_token": LocalSecretManager(self.project_root).mask_secret(access_token),
                 "note": str(raw.get("note", "quote only")).strip() or "quote only",
+                "scope": str(raw.get("scope", "quote")).strip() or "quote",
+                "sdk_managed": bool(raw.get("sdk_managed", False)),
             }
         )
 

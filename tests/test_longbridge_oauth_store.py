@@ -91,6 +91,21 @@ def test_clear_removes_token_file(tmp_path: Path) -> None:
     assert not store.token_path.exists()
 
 
+def test_save_metadata_marks_sdk_managed_without_leaking_token(tmp_path: Path) -> None:
+    store = LongbridgeOAuthStore(project_root=tmp_path)
+    status = store.save_oauth_metadata(
+        {
+            "scope": "quote",
+            "sdk_managed": True,
+            "note": "quote only; sdk managed",
+        }
+    )
+
+    assert status["token_file"] == "configured"
+    assert status["sdk_managed"] is True
+    assert status["access_token"] == "missing"
+
+
 def test_token_file_permissions_are_private(tmp_path: Path) -> None:
     store = LongbridgeOAuthStore(project_root=tmp_path)
     store.save_oauth_token({"access_token": "oauth_demo"})

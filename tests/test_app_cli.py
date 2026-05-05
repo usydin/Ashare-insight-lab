@@ -387,6 +387,34 @@ def test_main_longbridge_status_without_env(monkeypatch, capsys, tmp_path) -> No
                 assert "auth_mode_candidate: missing_app_credentials" in captured.out
                 assert "token_file: missing" in captured.out
 
+
+def test_main_longbridge_sdk_status_sdk_missing(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-sdk-status"])
+    monkeypatch.setattr(
+        app,
+        "inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": False,
+            "sdk_version": "unknown",
+            "available_symbols": {
+                "Config": False,
+                "QuoteContext": False,
+                "OAuthBuilder": False,
+            },
+            "error_message": "sdk missing",
+        },
+    )
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "sdk_importable: no" in captured.out
+    assert "QuoteContext: no" in captured.out
+    assert "OAuthBuilder: no" in captured.out
+    assert "sdk missing" in captured.out
+    assert "Traceback" not in captured.out
+
 def test_main_longbridge_quote_sdk_missing(monkeypatch, capsys) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
     mock_provider = MagicMock()
@@ -672,6 +700,9 @@ def test_main_longbridge_oauth_help(monkeypatch, capsys) -> None:
 
     assert result == 0
     assert "OAuth 2.0" in captured.out
+    assert "OAuthBuilder" in captured.out
+    assert "QuoteContext" in captured.out
+    assert "quote_only: true" in captured.out
     assert ".secrets/longbridge_oauth_token.json" in captured.out
     assert "不接交易" in captured.out
 
@@ -724,6 +755,77 @@ def test_main_longbridge_oauth_clear(monkeypatch, capsys, tmp_path) -> None:
         assert not store.token_path.exists()
 
 
+def test_main_longbridge_oauth_start_sdk_missing(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-start"])
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "demo-key")
+    monkeypatch.setattr(
+        app,
+        "start_longbridge_oauth",
+        lambda client_id, store: {
+            "status": "sdk_missing",
+            "message": "Longbridge SDK missing",
+            "sdk_token_cache": "unknown",
+        },
+    )
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "oauth: sdk_missing" in captured.out
+        assert "Longbridge SDK missing" in captured.out
+        assert "Traceback" not in captured.out
+
+
+def test_main_longbridge_oauth_start_app_key_missing(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-start"])
+    monkeypatch.delenv("LONGBRIDGE_APP_KEY", raising=False)
+    monkeypatch.setattr(
+        app,
+        "start_longbridge_oauth",
+        lambda client_id, store: {
+            "status": "app_key_missing",
+            "message": "缺少 LONGBRIDGE_APP_KEY。",
+            "sdk_token_cache": "unknown",
+        },
+    )
+
+    with patch("app.get_project_root", return_value=tmp_path):
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+                result = app.main()
+                captured = capsys.readouterr()
+
+                assert result == 0
+                assert "oauth: app_key_missing" in captured.out
+                assert "LONGBRIDGE_APP_KEY" in captured.out
+
+
+def test_main_longbridge_oauth_quote_sdk_missing(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-quote", "--symbol", "600519", "--market", "CN"])
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "demo-key")
+    monkeypatch.setattr(
+        app,
+        "fetch_longbridge_quote_via_oauth",
+        lambda client_id, symbol, raw_symbol, store: {
+            "data_status": "sdk_missing",
+            "error_message": "Longbridge SDK missing",
+            "symbol": symbol,
+            "raw_symbol": raw_symbol,
+        },
+    )
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "数据状态: sdk_missing" in captured.out
+        assert "Longbridge SDK missing" in captured.out
+        assert "Traceback" not in captured.out
+
+
 def test_main_longbridge_quote_oauth_required(monkeypatch, capsys) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
     mock_provider = MagicMock()
@@ -737,4 +839,20 @@ def test_main_longbridge_quote_oauth_required(monkeypatch, capsys) -> None:
 
         assert result == 0
         assert "longbridge-oauth-help" in captured.out
+        assert "Traceback" not in captured.out
+
+
+def test_main_longbridge_quote_oauthbuilder_required(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "data_status": "oauthbuilder_required",
+        "error_message": "请先执行 longbridge-oauth-start 或 longbridge-oauth-help。",
+    }
+    with patch("app.LongbridgeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "longbridge-oauth-start" in captured.out
         assert "Traceback" not in captured.out

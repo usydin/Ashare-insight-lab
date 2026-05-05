@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app_core.data_sources.longbridge_sdk_support import inspect_longbridge_sdk
 from app_core.security.longbridge_oauth_store import LongbridgeOAuthStore
 
 try:
@@ -33,7 +34,8 @@ class LongbridgeQuoteProvider:
         self.oauth_store = oauth_store or LongbridgeOAuthStore(project_root=project_root)
 
     def check_status(self) -> dict[str, Any]:
-        sdk_importable = lb is not None and LONGBRIDGE_IMPORT_ERROR is None
+        sdk_status = inspect_longbridge_sdk()
+        sdk_importable = bool(sdk_status["sdk_importable"])
         env_status = {
             key: ("present" if os.getenv(key) else "missing")
             for key in REQUIRED_ENV_KEYS
@@ -47,10 +49,12 @@ class LongbridgeQuoteProvider:
         return {
             "provider": self.provider_name,
             "sdk_importable": sdk_importable,
+            "oauthbuilder_available": bool(sdk_status["available_symbols"].get("OAuthBuilder")),
             "auth": {
                 "legacy_api_key": "ready" if auth_state["legacy_ready"] else "incomplete",
                 "oauth": self._map_oauth_status_for_display(str(oauth_status["status"])),
                 "auth_mode_candidate": auth_state["auth_mode"],
+                "oauthbuilder": auth_state["oauthbuilder"],
             },
             "env": env_status,
             "optional_env": optional_env,
@@ -86,11 +90,11 @@ class LongbridgeQuoteProvider:
                 auth_mode=auth_mode,
             )
 
-        if auth_mode == "oauth_required":
+        if auth_mode in {"oauth_required", "oauthbuilder_required"}:
             return self._base_quote(
                 symbol=symbol,
                 market=market,
-                data_status="oauth_required",
+                data_status=auth_mode,
                 error_message=str(auth_state["message"]),
                 auth_mode=auth_mode,
             )
@@ -158,12 +162,15 @@ class LongbridgeQuoteProvider:
         oauth_status = self.oauth_store.get_oauth_token_status()
         oauth_state = str(oauth_status.get("status", "missing"))
         oauth_available = oauth_state in {"configured", "unknown_expiry"} and oauth_status.get("access_token") == "present"
+        sdk_status = inspect_longbridge_sdk()
+        oauthbuilder_available = bool(sdk_status["available_symbols"].get("OAuthBuilder"))
 
         if not app_key_present:
             return {
                 "auth_mode": "missing_app_credentials",
                 "legacy_ready": False,
                 "message": "缺少 LONGBRIDGE_APP_KEY / LONGBRIDGE_APP_SECRET。",
+                "oauthbuilder": "unknown",
             }
 
         if legacy_token_present:
@@ -171,6 +178,7 @@ class LongbridgeQuoteProvider:
                 "auth_mode": "legacy_api_key",
                 "legacy_ready": True,
                 "message": "",
+                "oauthbuilder": "supported" if oauthbuilder_available else "missing_sdk",
             }
 
         if oauth_available:
@@ -178,6 +186,23 @@ class LongbridgeQuoteProvider:
                 "auth_mode": "oauth2_local_token",
                 "legacy_ready": False,
                 "message": "",
+                "oauthbuilder": "supported" if oauthbuilder_available else "missing_sdk",
+            }
+
+        if not sdk_status["sdk_importable"]:
+            return {
+                "auth_mode": "oauth_required",
+                "legacy_ready": False,
+                "message": "Longbridge SDK 未安装或不可导入，无法执行 OAuthBuilder。",
+                "oauthbuilder": "missing_sdk",
+            }
+
+        if oauthbuilder_available:
+            return {
+                "auth_mode": "oauthbuilder_required",
+                "legacy_ready": False,
+                "message": "请先执行 longbridge-oauth-start 或 longbridge-oauth-help。",
+                "oauthbuilder": "supported",
             }
 
         if oauth_state == "expired":
@@ -191,6 +216,7 @@ class LongbridgeQuoteProvider:
             "auth_mode": "oauth_required",
             "legacy_ready": False,
             "message": message,
+            "oauthbuilder": "unknown",
         }
 
     def _map_oauth_status_for_display(self, status: str) -> str:

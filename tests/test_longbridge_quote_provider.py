@@ -37,6 +37,13 @@ def test_symbol_mapping_cn(provider: LongbridgeQuoteProvider) -> None:
 
 
 def test_env_status_missing(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": False,
+            "available_symbols": {"OAuthBuilder": False},
+        },
+    )
     for key in ("LONGBRIDGE_APP_KEY", "LONGBRIDGE_APP_SECRET", "LONGBRIDGE_ACCESS_TOKEN"):
         monkeypatch.delenv(key, raising=False)
 
@@ -48,6 +55,13 @@ def test_env_status_missing(provider: LongbridgeQuoteProvider, monkeypatch: pyte
 
 
 def test_env_status_present(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
@@ -59,6 +73,7 @@ def test_env_status_present(provider: LongbridgeQuoteProvider, monkeypatch: pyte
     assert status["env"]["LONGBRIDGE_ACCESS_TOKEN"] == "present"
     assert status["auth"]["legacy_api_key"] == "ready"
     assert status["auth"]["auth_mode_candidate"] == "legacy_api_key"
+    assert status["auth"]["oauthbuilder"] == "supported"
     assert status["optional_env"]["LONGBRIDGE_REGION"] in {"present", "missing"}
 
 
@@ -73,13 +88,20 @@ def test_fetch_quote_oauth_required_without_legacy_token(
     provider: LongbridgeQuoteProvider,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
     res = provider.fetch_quote("600519", market="CN")
-    assert res["data_status"] == "oauth_required"
-    assert res["auth_mode"] == "oauth_required"
-    assert "longbridge-oauth-help" in res["error_message"]
+    assert res["data_status"] == "oauthbuilder_required"
+    assert res["auth_mode"] == "oauthbuilder_required"
+    assert "longbridge-oauth-start" in res["error_message"]
 
 
 def test_detects_oauth_local_token_mode(
@@ -87,6 +109,13 @@ def test_detects_oauth_local_token_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = LongbridgeQuoteProvider(project_root=tmp_path)
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
@@ -101,6 +130,13 @@ def test_detects_oauth_local_token_mode(
 
 
 def test_fetch_quote_sdk_missing(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": False,
+            "available_symbols": {"OAuthBuilder": False},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
@@ -109,7 +145,33 @@ def test_fetch_quote_sdk_missing(provider: LongbridgeQuoteProvider, monkeypatch:
     assert res["data_status"] == "sdk_missing"
 
 
+def test_status_identifies_oauthbuilder_requirement(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
+    monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
+    monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
+
+    status = provider.check_status()
+
+    assert status["oauthbuilder_available"] is True
+    assert status["auth"]["auth_mode_candidate"] == "oauthbuilder_required"
+    assert status["auth"]["oauthbuilder"] == "supported"
+
+
 def test_fetch_quote_unknown_symbol(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
@@ -122,6 +184,13 @@ def test_fetch_quote_unknown_symbol(provider: LongbridgeQuoteProvider, monkeypat
 
 
 def test_fetch_quote_success(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
@@ -155,6 +224,13 @@ def test_fetch_quote_success(provider: LongbridgeQuoteProvider, monkeypatch: pyt
 
 def test_fetch_quote_with_oauth_local_token_mode(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     provider = LongbridgeQuoteProvider(project_root=tmp_path)
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
@@ -182,6 +258,13 @@ def test_fetch_quote_with_oauth_local_token_mode(tmp_path, monkeypatch: pytest.M
 
 
 def test_fetch_quote_exception_sanitizes_error(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")

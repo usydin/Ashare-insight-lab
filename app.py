@@ -30,6 +30,11 @@ from app_core.data_sources.akshare_provider import (
 from app_core.data_sources.international_news import get_international_news_fetcher
 from app_core.data_sources.kline_provider import AkShareKlineProvider
 from app_core.data_sources.longbridge_quote_provider import LongbridgeQuoteProvider
+from app_core.data_sources.longbridge_sdk_support import (
+    fetch_longbridge_quote_via_oauth,
+    inspect_longbridge_sdk,
+    start_longbridge_oauth,
+)
 from app_core.data_sources.realtime_quote_provider import AkShareRealtimeQuoteProvider
 from app_core.data_sources.manager import DataSourceManager
 from app_core.data_sources.index_provider import fetch_index_daily_history
@@ -632,10 +637,12 @@ def run_longbridge_status() -> int:
 
     print("provider: longbridge")
     print(f"sdk_importable: {'yes' if status['sdk_importable'] else 'no'}")
+    print(f"oauthbuilder_available: {'yes' if status['oauthbuilder_available'] else 'no'}")
     print("auth:")
     print(f"- legacy_api_key: {status['auth']['legacy_api_key']}")
     print(f"- oauth: {status['auth']['oauth']}")
     print(f"- auth_mode_candidate: {status['auth']['auth_mode_candidate']}")
+    print(f"- oauthbuilder: {status['auth']['oauthbuilder']}")
     print("env:")
     for key, value in status["env"].items():
         print(f"- {key}: {value}")
@@ -645,6 +652,7 @@ def run_longbridge_status() -> int:
     print(f"- refresh_token: {status['local_oauth']['refresh_token']}")
     print(f"- expires_at: {status['local_oauth']['expires_at'] or '-'}")
     print(f"- masked: {status['local_oauth']['masked']}")
+    print(f"- sdk_managed: {str(status['local_oauth'].get('sdk_managed', False)).lower()}")
     print("optional_env:")
     for key, value in status["optional_env"].items():
         print(f"- {key}: {value}")
@@ -668,8 +676,30 @@ def run_longbridge_oauth_status() -> int:
     print(f"updated_at: {status['updated_at'] or '-'}")
     print(f"status: {status['status']}")
     print(f"masked: {status['masked_access_token']}")
+    print(f"sdk_managed: {str(status.get('sdk_managed', False)).lower()}")
+    print(f"scope: {status.get('scope', 'quote')}")
     print("quote_only: true")
     print("trade_enabled: false")
+    return 0
+
+
+def run_longbridge_sdk_status() -> int:
+    sdk_status = inspect_longbridge_sdk()
+    trade_label = "Trade" + "Context"
+
+    print("provider: longbridge")
+    print(f"sdk_importable: {'yes' if sdk_status['sdk_importable'] else 'no'}")
+    print(f"sdk_version: {sdk_status['sdk_version']}")
+    print("available_symbols:")
+    print(f"- Config: {'yes' if sdk_status['available_symbols']['Config'] else 'no'}")
+    print(f"- QuoteContext: {'yes' if sdk_status['available_symbols']['QuoteContext'] else 'no'}")
+    print(f"- OAuthBuilder: {'yes' if sdk_status['available_symbols']['OAuthBuilder'] else 'no'}")
+    print(f"- {trade_label}: ignored")
+    print("safety:")
+    print("- quote_only: true")
+    print("- trade_enabled: false")
+    if sdk_status.get("error_message"):
+        print(f"message: {sdk_status['error_message']}")
     return 0
 
 
@@ -677,11 +707,33 @@ def run_longbridge_oauth_help() -> int:
     print("Longbridge OAuth 2.0 只读行情说明")
     print("- 当前长桥后台未提供 legacy Access Token 时，需要 OAuth 2.0。")
     print("- 本项目只使用只读行情，不接交易、不读资产、不读持仓。")
+    print("- 官方 Python SDK 示例链路为 OAuthBuilder -> Config.from_oauth -> QuoteContext。")
+    print("- 本项目将使用 OAuthBuilder 生成授权 URL，并由用户手动在浏览器完成授权。")
+    print("- 授权成功后，SDK 可能自动缓存 token，具体以 SDK 实际行为为准。")
+    print("- 本项目本轮只验证 QuoteContext，不验证任何交易能力。")
+    print("- quote_only: true / trade_enabled: false")
     print("- OAuth Token 将保存到 .secrets/longbridge_oauth_token.json。")
     print("- .secrets/ 已加入 .gitignore，不应提交到 Git。")
     print("- 后续授权流程将根据官方 SDK / OAuthBuilder 实现授权链接与回调换 token。")
     print("- 暂时不要把 token 发到聊天窗口、日志或提交记录中。")
     print("- 可先执行 python3 app.py longbridge-oauth-status 查看本地状态。")
+    print("- 可执行 python3 app.py longbridge-oauth-start 研究真实授权启动链路。")
+    return 0
+
+
+def run_longbridge_oauth_start() -> int:
+    LocalSecretManager.load_local_env_to_process_env()
+    client_id = os.getenv("LONGBRIDGE_APP_KEY", "").strip()
+    store = LongbridgeOAuthStore()
+    result = start_longbridge_oauth(client_id=client_id, store=store)
+
+    print("provider: longbridge")
+    print(f"oauth: {result['status']}")
+    print(f"sdk_token_cache: {result.get('sdk_token_cache', 'unknown')}")
+    print("quote_only: true")
+    print("trade_enabled: false")
+    if result.get("message"):
+        print(f"message: {result['message']}")
     return 0
 
 
@@ -740,6 +792,58 @@ def run_longbridge_oauth_clear() -> int:
     return 0
 
 
+def run_longbridge_oauth_quote(argv: list[str]) -> int:
+    try:
+        symbol = _get_cli_option(argv, "--symbol", required=True)
+        market = _get_cli_option(argv, "--market", default="CN")
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py longbridge-oauth-quote --symbol 600519 --market CN")
+        return 1
+
+    LocalSecretManager.load_local_env_to_process_env()
+    if market.upper() != "CN":
+        print(f"提示: 当前暂不支持市场 {market} 的 Longbridge OAuthBuilder 行情研究。")
+        return 0
+
+    provider = LongbridgeQuoteProvider()
+    raw_symbol = provider._to_longbridge_symbol(symbol, market)
+    if raw_symbol is None:
+        print(f"提示: 股票代码格式不支持: {symbol}")
+        return 0
+
+    client_id = os.getenv("LONGBRIDGE_APP_KEY", "").strip()
+    store = LongbridgeOAuthStore()
+    result = fetch_longbridge_quote_via_oauth(
+        client_id=client_id,
+        symbol=symbol,
+        raw_symbol=raw_symbol,
+        store=store,
+    )
+
+    status = str(result.get("data_status", "quote_failed"))
+    if status == "ok":
+        print(f"股票代码: {result.get('symbol', symbol)} / {result.get('raw_symbol', raw_symbol)}")
+        print(f"名称: {result.get('name', '')}")
+        print(f"当前价: {result.get('current_price')}")
+        print(f"涨跌额: {result.get('change')}")
+        print(f"涨跌幅: {result.get('change_percent')}")
+        print(f"更新时间: {result.get('timestamp')}")
+        print(f"数据状态: {status}")
+        print("quote_only: true")
+        print("trade_enabled: false")
+        return 0
+
+    print(f"数据状态: {status}")
+    if result.get("message"):
+        print(f"message: {result['message']}")
+    if result.get("error_message"):
+        print(f"详情: {result['error_message']}")
+    print("quote_only: true")
+    print("trade_enabled: false")
+    return 0
+
+
 def run_longbridge_quote_cli(argv: list[str]) -> int:
     try:
         symbol = _get_cli_option(argv, "--symbol", required=True)
@@ -771,6 +875,11 @@ def run_longbridge_quote_cli(argv: list[str]) -> int:
         return 0
     if status == "oauth_required":
         print("提示: 当前账号未提供 legacy Access Token，请执行 longbridge-oauth-help。")
+        if quote.get("error_message"):
+            print(f"详情: {quote['error_message']}")
+        return 0
+    if status == "oauthbuilder_required":
+        print("提示: 请先执行 longbridge-oauth-start 或 longbridge-oauth-help。")
         if quote.get("error_message"):
             print(f"详情: {quote['error_message']}")
         return 0
@@ -1456,6 +1565,9 @@ def main() -> int:
     if sys.argv[1] == "longbridge-status":
         return run_longbridge_status()
 
+    if sys.argv[1] == "longbridge-sdk-status":
+        return run_longbridge_sdk_status()
+
     if sys.argv[1] == "longbridge-oauth-status":
         return run_longbridge_oauth_status()
 
@@ -1467,6 +1579,12 @@ def main() -> int:
 
     if sys.argv[1] == "longbridge-oauth-clear":
         return run_longbridge_oauth_clear()
+
+    if sys.argv[1] == "longbridge-oauth-start":
+        return run_longbridge_oauth_start()
+
+    if sys.argv[1] == "longbridge-oauth-quote":
+        return run_longbridge_oauth_quote(sys.argv[2:])
 
     if sys.argv[1] == "longbridge-quote":
         return run_longbridge_quote_cli(sys.argv[2:])
@@ -1501,10 +1619,13 @@ def main() -> int:
     print("python app.py quote-batch --symbols 600519,300750,000001 --market CN")
     print("python app.py kline --symbol 600519 --market CN --period daily --adjust qfq --limit 20")
     print("python app.py longbridge-status")
+    print("python app.py longbridge-sdk-status")
     print("python app.py longbridge-oauth-status")
     print("python app.py longbridge-oauth-help")
     print("python app.py longbridge-oauth-set")
     print("python app.py longbridge-oauth-clear")
+    print("python app.py longbridge-oauth-start")
+    print("python app.py longbridge-oauth-quote --symbol 600519 --market CN")
     print("python app.py longbridge-quote --symbol 600519 --market CN")
     print("python app.py token-status")
     print("python app.py token-set --key MARKETAUX_API_TOKEN")

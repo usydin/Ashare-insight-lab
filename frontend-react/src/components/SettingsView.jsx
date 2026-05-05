@@ -106,8 +106,24 @@ const SettingsView = ({ data }) => {
             <span className="meta-value code">python3 app.py longbridge-oauth-help</span>
           </div>
           <div className="meta-row">
+            <span className="meta-label">OAuthBuilder 验证</span>
+            <span className="meta-value">待执行 / 已支持 CLI</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">只读行情验证命令</span>
+            <span className="meta-value code">python3 app.py longbridge-oauth-quote --symbol 600519 --market CN</span>
+          </div>
+          <div className="meta-row">
             <span className="meta-label">安全边界</span>
             <span className="meta-value">只读行情，不接交易</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">前端输入</span>
+            <span className="meta-value">不在前端输入 token</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">SDK 探测</span>
+            <span className="meta-value code">python3 app.py longbridge-sdk-status</span>
           </div>
           <div className="meta-row">
             <span className="meta-label">OpenAI API</span>
