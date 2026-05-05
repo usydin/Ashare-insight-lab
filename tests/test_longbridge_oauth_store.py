@@ -103,7 +103,10 @@ def test_save_metadata_marks_sdk_managed_without_leaking_token(tmp_path: Path) -
 
     assert status["token_file"] == "configured"
     assert status["sdk_managed"] is True
-    assert status["access_token"] == "missing"
+    assert status["status"] == "sdk_managed_configured"
+    assert status["access_token"] == "sdk_managed"
+    assert status["refresh_token"] == "sdk_managed_or_unknown"
+    assert status["masked_access_token"] == ""
 
 
 def test_token_file_permissions_are_private(tmp_path: Path) -> None:

@@ -639,6 +639,10 @@ def run_longbridge_status() -> int:
     print("provider: longbridge")
     print(f"sdk_importable: {'yes' if status['sdk_importable'] else 'no'}")
     print(f"oauthbuilder_available: {'yes' if status['oauthbuilder_available'] else 'no'}")
+    print("oauth_client:")
+    print(f"- client_id: {'present' if status['oauth_client']['client_id_present'] else 'missing'}")
+    print(f"- redirect_uri: {status['oauth_client']['redirect_uri']}")
+    print(f"- app_key_is_oauth_client_id: {str(status['oauth_client']['app_key_is_oauth_client_id']).lower()}")
     print("auth:")
     print(f"- legacy_api_key: {status['auth']['legacy_api_key']}")
     print(f"- oauth: {status['auth']['oauth']}")
@@ -720,7 +724,12 @@ def run_longbridge_oauth_help() -> int:
     print("- 可先执行 python3 app.py longbridge-oauth-status 查看本地状态。")
     print("- 可执行 python3 app.py longbridge-oauth-start 研究真实授权启动链路。")
     print("- 已知问题: 如果授权页显示 Authorization Failed / internal_server_error，说明请求已到达 Longbridge OAuth 授权服务端。")
-    print("- 优先排查: OAuth client 是否启用、App Key 是否等同 OAuth client_id、redirect_uri 是否需要登记。")
+    print("- 重要: App Key 不能作为 OAuth client_id 使用。")
+    print("- OAuth client_id 需要通过 /oauth2/register 单独注册，并登记 redirect_uri。")
+    print("- 本项目 redirect_uri: http://localhost:60355/callback")
+    print('- 注册返回的 client_id 请保存到 .env: LONGBRIDGE_OAUTH_CLIENT_ID="..."')
+    print("- 不要保存或提交注册接口返回的 access token。")
+    print("- 不要把完整 client_id / App Secret / token / state / code 发到聊天或 Git。")
     print("- 继续排查: 当前账号/地区/行情权限是否支持 OAuthBuilder，或 Longbridge OAuth 服务端是否存在临时异常。")
     print("- 不要发送 App Secret / Token / 完整授权 URL；可向支持方提供脱敏诊断摘要。")
     return 0
@@ -728,7 +737,7 @@ def run_longbridge_oauth_help() -> int:
 
 def run_longbridge_oauth_start() -> int:
     LocalSecretManager.load_local_env_to_process_env()
-    client_id = os.getenv("LONGBRIDGE_APP_KEY", "").strip()
+    client_id = os.getenv("LONGBRIDGE_OAUTH_CLIENT_ID", "").strip()
     store = LongbridgeOAuthStore()
     result = start_longbridge_oauth(client_id=client_id, store=store)
     sdk_status = inspect_longbridge_sdk()
@@ -742,6 +751,8 @@ def run_longbridge_oauth_start() -> int:
         print(f"sdk_importable: {'yes' if diagnostics['sdk_importable'] else 'no'}")
         print(f"sdk_version: {diagnostics['sdk_version']}")
         print(f"client_id_present: {str(diagnostics['client_id_present']).lower()}")
+        if diagnostics.get("browser_open_requested") is not None:
+            print(f"browser_open_requested: {str(bool(diagnostics['browser_open_requested'])).lower()}")
         print(f"redirect_uri_host: {diagnostics['redirect_uri_host']}")
         print(f"redirect_uri_scheme: {diagnostics['redirect_uri_scheme']}")
         print("quote_only: true")
@@ -753,6 +764,10 @@ def run_longbridge_oauth_start() -> int:
         print(f"sdk_importable: {'yes' if sdk_status['sdk_importable'] else 'no'}")
         print(f"sdk_version: {sdk_status['sdk_version']}")
         print(f"client_id_present: {str(bool(client_id)).lower()}")
+        if result.get("browser_open_requested") is not None:
+            print(f"browser_open_requested: {str(bool(result['browser_open_requested'])).lower()}")
+        if result.get("redirect_uri_host"):
+            print(f"redirect_uri_host: {result['redirect_uri_host']}")
         print(f"sdk_token_cache: {result.get('sdk_token_cache', 'unknown')}")
         print("quote_only: true")
         print("trade_enabled: false")
@@ -822,21 +837,21 @@ def run_longbridge_oauth_quote(argv: list[str]) -> int:
         market = _get_cli_option(argv, "--market", default="CN")
     except ValueError as error:
         print(str(error))
-        print("用法: python3 app.py longbridge-oauth-quote --symbol 600519 --market CN")
+        print("用法: python3 app.py longbridge-oauth-quote --symbol AAPL --market US")
         return 1
 
     LocalSecretManager.load_local_env_to_process_env()
-    if market.upper() != "CN":
-        print(f"提示: 当前暂不支持市场 {market} 的 Longbridge OAuthBuilder 行情研究。")
-        return 0
-
     provider = LongbridgeQuoteProvider()
-    raw_symbol = provider._to_longbridge_symbol(symbol, market)
+    market_code = market.upper()
+    raw_symbol = provider._to_longbridge_symbol(symbol, market_code)
     if raw_symbol is None:
+        if market_code not in {"CN", "US", "HK"}:
+            print(f"提示: 当前暂不支持市场 {market_code} 的 Longbridge OAuthBuilder 行情研究。")
+            return 0
         print(f"提示: 股票代码格式不支持: {symbol}")
         return 0
 
-    client_id = os.getenv("LONGBRIDGE_APP_KEY", "").strip()
+    client_id = os.getenv("LONGBRIDGE_OAUTH_CLIENT_ID", "").strip()
     store = LongbridgeOAuthStore()
     result = fetch_longbridge_quote_via_oauth(
         client_id=client_id,
@@ -847,7 +862,9 @@ def run_longbridge_oauth_quote(argv: list[str]) -> int:
 
     status = str(result.get("data_status", "quote_failed"))
     if status == "ok":
-        print(f"股票代码: {result.get('symbol', symbol)} / {result.get('raw_symbol', raw_symbol)}")
+        print(f"股票代码: {result.get('symbol', symbol)}")
+        print(f"Longbridge代码: {result.get('raw_symbol', raw_symbol)}")
+        print(f"市场: {market_code}")
         print(f"名称: {result.get('name', '')}")
         print(f"当前价: {result.get('current_price')}")
         print(f"涨跌额: {result.get('change')}")

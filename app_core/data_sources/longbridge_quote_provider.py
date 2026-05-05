@@ -20,6 +20,8 @@ APP_CREDENTIAL_KEYS = ("LONGBRIDGE_APP_KEY", "LONGBRIDGE_APP_SECRET")
 LEGACY_ACCESS_TOKEN_KEY = "LONGBRIDGE_ACCESS_TOKEN"
 REQUIRED_ENV_KEYS = (*APP_CREDENTIAL_KEYS, LEGACY_ACCESS_TOKEN_KEY)
 OPTIONAL_ENV_KEYS = ("LONGBRIDGE_REGION", "LONGBRIDGE_HTTP_URL", "LONGBRIDGE_QUOTE_WS_URL")
+OAUTH_CLIENT_ID_KEY = "LONGBRIDGE_OAUTH_CLIENT_ID"
+DEFAULT_REDIRECT_URI = "http://localhost:60355/callback"
 
 
 class LongbridgeQuoteProvider:
@@ -46,10 +48,16 @@ class LongbridgeQuoteProvider:
         }
         oauth_status = self.oauth_store.get_oauth_token_status()
         auth_state = self._resolve_auth_state()
+        client_id_present = bool(os.getenv(OAUTH_CLIENT_ID_KEY))
         return {
             "provider": self.provider_name,
             "sdk_importable": sdk_importable,
             "oauthbuilder_available": bool(sdk_status["available_symbols"].get("OAuthBuilder")),
+            "oauth_client": {
+                "client_id_present": client_id_present,
+                "redirect_uri": DEFAULT_REDIRECT_URI,
+                "app_key_is_oauth_client_id": False,
+            },
             "auth": {
                 "legacy_api_key": "ready" if auth_state["legacy_ready"] else "incomplete",
                 "oauth": self._map_oauth_status_for_display(str(oauth_status["status"])),
@@ -73,9 +81,13 @@ class LongbridgeQuoteProvider:
         }
 
     def fetch_quote(self, symbol: str, market: str = "CN") -> dict[str, Any]:
-        if market.upper() != "CN":
+        market_code = str(market).strip().upper()
+        if market_code not in {"CN", "US", "HK"}:
             return self._base_quote(
-                symbol=symbol, market=market, data_status="unsupported_market", error_message=f"Unsupported market: {market}"
+                symbol=symbol,
+                market=market_code,
+                data_status="unsupported_market",
+                error_message=f"Unsupported market: {market}",
             )
 
         auth_state = self._resolve_auth_state()
@@ -84,16 +96,16 @@ class LongbridgeQuoteProvider:
         if auth_mode == "missing_app_credentials":
             return self._base_quote(
                 symbol=symbol,
-                market=market,
+                market=market_code,
                 data_status="missing_env",
                 error_message="Missing environment variables: LONGBRIDGE_APP_KEY / LONGBRIDGE_APP_SECRET",
                 auth_mode=auth_mode,
             )
 
-        if auth_mode in {"oauth_required", "oauthbuilder_required"}:
+        if auth_mode in {"oauth_required", "oauthbuilder_required", "oauth_client_registration_required"}:
             return self._base_quote(
                 symbol=symbol,
-                market=market,
+                market=market_code,
                 data_status=auth_mode,
                 error_message=str(auth_state["message"]),
                 auth_mode=auth_mode,
@@ -102,17 +114,17 @@ class LongbridgeQuoteProvider:
         if lb is None:
             return self._base_quote(
                 symbol=symbol,
-                market=market,
+                market=market_code,
                 data_status="sdk_missing",
                 error_message=str(LONGBRIDGE_IMPORT_ERROR or "SDK missing"),
                 auth_mode=auth_mode,
             )
 
-        mapped = self._to_longbridge_symbol(symbol, "CN")
+        mapped = self._to_longbridge_symbol(symbol, market_code)
         if mapped is None:
             return self._base_quote(
                 symbol=symbol,
-                market=market,
+                market=market_code,
                 data_status="unsupported_symbol",
                 error_message="Unsupported symbol format",
                 auth_mode=auth_mode,
@@ -121,7 +133,7 @@ class LongbridgeQuoteProvider:
         try:
             snapshot = self._fetch_lb_quote_snapshot(mapped)
             return {
-                **self._base_quote(symbol=symbol, market=market, data_status="ok", auth_mode=auth_mode),
+                **self._base_quote(symbol=symbol, market=market_code, data_status="ok", auth_mode=auth_mode),
                 "raw_symbol": mapped,
                 "name": snapshot.get("name", ""),
                 "current_price": snapshot.get("current_price"),
@@ -137,11 +149,16 @@ class LongbridgeQuoteProvider:
             }
         except Exception as error:
             message = self._sanitize_error(str(error))
+            data_status = "permission_required" if self._is_permission_error(message) else "fetch_failed"
             return self._base_quote(
                 symbol=symbol,
-                market=market,
-                data_status="fetch_failed",
-                error_message=message,
+                market=market_code,
+                data_status=data_status,
+                error_message=(
+                    "当前账号可能未开通对应市场 OpenAPI 实时行情权限"
+                    if data_status == "permission_required"
+                    else message
+                ),
                 auth_mode=auth_mode,
             )
 
@@ -159,9 +176,10 @@ class LongbridgeQuoteProvider:
     def _resolve_auth_state(self) -> dict[str, Any]:
         app_key_present = all(os.getenv(key) for key in APP_CREDENTIAL_KEYS)
         legacy_token_present = bool(os.getenv(LEGACY_ACCESS_TOKEN_KEY))
+        oauth_client_id_present = bool(os.getenv(OAUTH_CLIENT_ID_KEY))
         oauth_status = self.oauth_store.get_oauth_token_status()
         oauth_state = str(oauth_status.get("status", "missing"))
-        oauth_available = oauth_state in {"configured", "unknown_expiry"} and oauth_status.get("access_token") == "present"
+        oauth_available = oauth_state in {"configured", "unknown_expiry", "sdk_managed_configured"}
         sdk_status = inspect_longbridge_sdk()
         oauthbuilder_available = bool(sdk_status["available_symbols"].get("OAuthBuilder"))
 
@@ -198,12 +216,20 @@ class LongbridgeQuoteProvider:
             }
 
         if oauthbuilder_available:
-            return {
-                "auth_mode": "oauthbuilder_required",
-                "legacy_ready": False,
-                "message": "请先执行 longbridge-oauth-start 或 longbridge-oauth-help。",
-                "oauthbuilder": "supported",
-            }
+            if not oauth_client_id_present:
+                return {
+                    "auth_mode": "oauth_client_registration_required",
+                    "legacy_ready": False,
+                    "message": "请先通过 /oauth2/register 注册 OAuth Client，并设置 LONGBRIDGE_OAUTH_CLIENT_ID。",
+                    "oauthbuilder": "supported",
+                }
+            else:
+                return {
+                    "auth_mode": "oauthbuilder_required",
+                    "legacy_ready": False,
+                    "message": "请先执行 longbridge-oauth-start 或 longbridge-oauth-help。",
+                    "oauthbuilder": "supported",
+                }
 
         if oauth_state == "expired":
             message = "本地 OAuth Token 已过期，请重新授权或执行 longbridge-oauth-help。"
@@ -222,6 +248,7 @@ class LongbridgeQuoteProvider:
     def _map_oauth_status_for_display(self, status: str) -> str:
         mapping = {
             "configured": "configured",
+            "sdk_managed_configured": "configured",
             "expired": "expired",
             "missing": "missing",
             "invalid_json": "unknown",
@@ -232,14 +259,62 @@ class LongbridgeQuoteProvider:
 
     def _sanitize_error(self, message: str) -> str:
         # 移除可能包含的敏感信息提示（不读取真实值，仅防御性处理关键字）
-        redactions = ["APP_KEY", "APP_SECRET", "ACCESS_TOKEN", "REFRESH_TOKEN", "LONGBRIDGE"]
+        redactions = [
+            "APP_KEY",
+            "APP_SECRET",
+            "ACCESS_TOKEN",
+            "REFRESH_TOKEN",
+            "app_key",
+            "app_secret",
+            "access_token",
+            "refresh_token",
+            "client_id",
+            "client_secret",
+            "state",
+            "code",
+            "LONGBRIDGE",
+        ]
         lowered = message
         for token in redactions:
             lowered = lowered.replace(token, "***")
         return lowered
 
-    def _to_longbridge_symbol(self, symbol: str, _market: str) -> str | None:
+    def _is_permission_error(self, message: str) -> bool:
+        lowered = str(message).lower()
+        markers = (
+            "permission",
+            "authority",
+            "not authorized",
+            "not subscribed",
+            "quote package",
+            "行情权限",
+            "权限不足",
+        )
+        return any(marker in lowered for marker in markers)
+
+    def _to_longbridge_symbol(self, symbol: str, market: str) -> str | None:
         s = str(symbol).strip().upper()
+        market_code = str(market).strip().upper()
+
+        if market_code == "US":
+            if s.endswith(".US"):
+                return s
+            if "." in s:
+                return None
+            if not s or not all(ch.isalnum() or ch in {"-", "_"} for ch in s):
+                return None
+            return f"{s}.US"
+
+        if market_code == "HK":
+            base = s[:-3] if s.endswith(".HK") else s
+            if "." in base or not base.isdigit():
+                return None
+            normalized = base.lstrip("0") or "0"
+            return f"{normalized}.HK"
+
+        if market_code != "CN":
+            return None
+
         if "." in s:
             parts = s.split(".")
             if len(parts) == 2 and parts[1] in {"SH", "SZ"}:

@@ -48,26 +48,28 @@ python3 app.py longbridge-sdk-status
 python3 app.py longbridge-oauth-help
 ```
 
-启动 OAuthBuilder 授权研究流程：
+启动 OAuthBuilder 授权研究流程（自动打开浏览器，不打印完整 URL）：
 
 ```bash
 python3 app.py longbridge-oauth-start
 ```
 
-执行只读行情验证：
+执行只读行情验证（建议先验证 US / HK）：
 
 ```bash
-python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
+python3 app.py longbridge-oauth-quote --symbol AAPL --market US
+python3 app.py longbridge-oauth-quote --symbol 700  --market HK
+# 如需 A 股，再评估账号行情权限后执行：
+# python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 ```
 
 ## 授权流程
 
 1. 终端运行 `longbridge-oauth-start`
-2. 终端打印授权 URL
-3. 在浏览器打开该 URL
-4. 登录并完成授权
-5. 返回终端查看授权结果
-6. 如 SDK 支持缓存，将记录为 `sdk_token_cache: maybe_configured`
+2. 系统自动打开默认浏览器到授权页
+3. 登录并完成授权
+4. 返回终端查看授权结果（不展示完整 URL 或敏感参数）
+5. 如 SDK 支持缓存，将记录为 `sdk_token_cache: maybe_configured`
 
 ## Token 安全
 
@@ -76,6 +78,7 @@ python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 - 不截图或粘贴 token 到聊天窗口
 - 如果 SDK 自身有缓存目录，也只作为本机缓存，不纳入 Git
 - 本项目仅保存脱敏状态或非敏感 metadata，不主动复制完整 OAuth token
+- 不要保存或提交注册接口返回的 access token
 
 ## 已知风险
 
@@ -84,7 +87,7 @@ python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 - A 股行情权限可能受账户自身行情权限影响
 - 实测时 `00700.HK` / `AAPL.US` 可能比 A 股更容易先验证
 
-## 真实授权失败记录：internal_server_error
+## 授权进展与历史问题
 
 - 日期：2026-05-05
 - 环境：macOS arm64
@@ -92,20 +95,18 @@ python3 app.py longbridge-oauth-quote --symbol 600519 --market CN
 - SDK：longbridge 4.0.5
 - SDK 状态：Config / QuoteContext / OAuthBuilder 均可用
 - TradeContext：未导入、未调用
-- 现象：OAuthBuilder 能生成授权 URL，浏览器授权页返回 `Authorization Failed / internal_server_error`
-- 本地 OAuth token 文件：未生成
-- `.secrets/longbridge_oauth_token.json`：不存在
-- Git 状态：clean
-- 安全扫描：无输出
-- 结论：失败发生在授权服务端 / OAuth client 配置 / redirect_uri / 账号权限侧，尚未进入 QuoteContext 行情请求阶段
-- 后续建议：联系 Longbridge OpenAPI 支持，或检查开发者后台 OAuth 配置、redirect_uri 和账号权限
+进展更新：
+
+- 当前授权已成功，浏览器显示 “Authorization Successful! You can close this window and return to the terminal.”
+- 根因：过去误用 App Key 作为 OAuth client_id，已改为使用独立 `LONGBRIDGE_OAUTH_CLIENT_ID`。
+- SDK token cache 由 Longbridge SDK 托管，本项目仅记录脱敏 metadata 与状态，不读取或复制完整 token。
 
 ## 当前阶段补充说明
 
-- 当前用户决定暂缓前端实时行情卡片增强。
-- 等 Longbridge OAuth 授权问题解决后，再把 Longbridge 真实只读行情一起接入前端实时行情。
-- 当前已新增面向 Longbridge OpenAPI 支持的脱敏排查材料文档：`docs/data/长桥OpenAPI支持排查材料.md`
-- 当前前端中的行情源切换仍为视觉原型，不改变真实后端数据源。
+- 已确认：App Key 不能作为 OAuth client_id 使用；需通过 `/oauth2/register` 单独注册 OAuth Client 并登记 redirect_uri。
+- 本项目 redirect_uri: `http://localhost:60355/callback`
+- `.env` 仅在本机保存 `LONGBRIDGE_OAUTH_CLIENT_ID`；不提交 Git。
+- 下一步：优先验证 US/HK 只读行情（AAPL.US / 700.HK），A 股根据账号行情权限再评估。
 
 ## 禁止事项
 

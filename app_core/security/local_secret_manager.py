@@ -15,6 +15,11 @@ SECRET_SPECS: dict[str, dict[str, str]] = {
         "display_name": "Marketaux 新闻 API",
         "note": "国际市场新闻",
     },
+    "LONGBRIDGE_OAUTH_CLIENT_ID": {
+        "provider": "Longbridge",
+        "display_name": "Longbridge OAuth Client ID",
+        "note": "OAuthBuilder 授权专用 Client ID，不等同于 App Key。",
+    },
     "LONGBRIDGE_APP_KEY": {
         "provider": "Longbridge",
         "display_name": "Longbridge App Key",

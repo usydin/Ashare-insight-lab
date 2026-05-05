@@ -98,6 +98,7 @@ def test_load_local_env_to_process_env(tmp_path: Path, monkeypatch) -> None:
     (tmp_path / ".env").write_text(
         "MARKETAUX_API_TOKEN=demo-token-1234\n"
         "LONGBRIDGE_APP_KEY=key-5678\n"
+        "LONGBRIDGE_OAUTH_CLIENT_ID=cli-1234\n"
         "OPENAI_API_KEY=\n",  # 空值
         encoding="utf-8"
     )
@@ -105,6 +106,7 @@ def test_load_local_env_to_process_env(tmp_path: Path, monkeypatch) -> None:
     # 确保环境变量初始为空
     monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
     monkeypatch.delenv("LONGBRIDGE_APP_KEY", raising=False)
+    monkeypatch.delenv("LONGBRIDGE_OAUTH_CLIENT_ID", raising=False)
     monkeypatch.setenv("EXISTING_TOKEN", "already-set")
     
     # 执行加载
@@ -114,11 +116,13 @@ def test_load_local_env_to_process_env(tmp_path: Path, monkeypatch) -> None:
     import os
     assert os.environ["MARKETAUX_API_TOKEN"] == "demo-token-1234"
     assert os.environ["LONGBRIDGE_APP_KEY"] == "key-5678"
+    assert os.environ["LONGBRIDGE_OAUTH_CLIENT_ID"] == "cli-1234"
     assert "OPENAI_API_KEY" not in os.environ
     
     # 验证摘要内容
     assert "MARKETAUX_API_TOKEN" in summary["loaded_keys"]
     assert "LONGBRIDGE_APP_KEY" in summary["loaded_keys"]
+    assert "LONGBRIDGE_OAUTH_CLIENT_ID" in summary["loaded_keys"]
     assert "OPENAI_API_KEY" in summary["empty_keys"]
     assert "demo-token-1234" not in str(summary)
     

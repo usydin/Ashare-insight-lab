@@ -4,14 +4,14 @@
 
 A股智研台计划接入 Longbridge OpenAPI 作为只读行情源，仅使用 `QuoteContext`，不使用 `TradeContext`。
 
-当前卡在 `OAuthBuilder` 授权阶段：本地 CLI 可启动授权流程并生成授权 URL，但浏览器打开授权页后返回：
+历史上卡在 `OAuthBuilder` 授权阶段：本地 CLI 可启动授权流程并生成授权 URL，但浏览器打开授权页后返回：
 
 ```text
 Authorization Failed
 Error: internal_server_error
 ```
 
-当前问题尚未进入真实只读行情查询阶段，系统也尚未获得可用于 `Config.from_oauth(oauth)` 的授权对象或本地 OAuth token。
+进展更新：目前授权已成功（浏览器显示 Authorization Successful），系统可继续进入 `Config.from_oauth(oauth)` / `QuoteContext` 只读行情验证。
 
 ## 二、环境信息
 
@@ -26,16 +26,20 @@ Error: internal_server_error
 
 ## 三、当前凭证状态
 
-以下内容仅为脱敏状态说明，不包含真实凭证值：
+以下内容仅为脱敏状态说明，不包含真实凭证值（当前沿用 SDK 托管 token cache，不复制完整 token）：
 
 - App Key: present
 - App Secret: present
 - Legacy Access Token: missing / 后台显示 `--`
 - Region: cn
+- OAuth Client ID: present/missing（通过 /oauth2/register 单独注册）
 - OAuth token file: missing
 - `.secrets/longbridge_oauth_token.json`: not generated
+- 已确认：App Key ≠ OAuth client_id（需使用独立的 OAuth Client ID）
+- redirect_uri 使用: `http://localhost:60355/callback`
+- 禁止纳入：注册接口返回的 access token（不写入代码、文档、日志、测试、snapshot 或 Git）
 
-严禁写入以下内容：
+严禁写入以下内容（包括但不限于）：
 
 - App Secret
 - 完整 App Key
@@ -54,15 +58,14 @@ python3 app.py longbridge-status
 python3 app.py longbridge-oauth-start
 ```
 
-说明：
+说明（历史问题已解决）：
 
-- 执行 `longbridge-oauth-start` 后，SDK 可以生成授权 URL。
-- 浏览器打开授权 URL 后，授权页返回 `internal_server_error`。
-- 本地未生成 `.secrets/longbridge_oauth_token.json`。
+- 过去因误用 App Key 作为 OAuth client_id 导致 `internal_server_error`，现已通过独立 OAuth Client ID 修正。
+- SDK 可能托管 token cache，本项目仅记录脱敏 metadata，`longbridge-oauth-status` 会显示 `sdk_managed_configured`。
 
 ## 五、实际结果
 
-浏览器页面：
+浏览器页面（历史）：
 
 ```text
 Authorization Failed
@@ -84,12 +87,12 @@ trade_enabled: false
 
 ## 六、期望结果
 
-希望完成 OAuth 授权，获得可用于 `Config.from_oauth(oauth)` 的授权对象或 token，使系统可以继续调用 `QuoteContext` 做只读行情查询。
+希望继续用 OAuth 授权对象调用 `QuoteContext` 做只读行情查询，并优先验证 US/HK 市场标的。
 
 ## 七、需要 Longbridge 支持确认的问题
 
-1. 开发者后台的 App Key 是否可以直接作为 `OAuthBuilder` 的 `client_id` 使用？
-2. 是否需要单独创建 OAuth Client？
+1. 已确认 App Key 不能作为 `OAuthBuilder` 的 `client_id` 使用（本地已采用独立 OAuth Client ID）
+2. OAuth Client 需通过 `/oauth2/register` 单独创建（已完成本地注册）
 3. 是否需要登记 `redirect_uri`？
 4. `OAuthBuilder` 默认 `localhost` callback 是否被支持？
 5. 当前账号 / 地区 / 权限是否支持 `OAuthBuilder`？
@@ -117,13 +120,13 @@ trade_enabled: false
 
 等 Longbridge 授权问题解决后，再进入：
 
-`V1.0-alpha-03-longbridge-real-quote-integration`
+`V1.0-alpha-03-longbridge-oauth-quote-market-support`
 
 计划如下：
 
 1. 使用 Longbridge OAuth 成功后的凭证调用 `QuoteContext`
-2. 增加 `longbridge-oauth-quote` 真实行情验证
-3. 增加 `LongbridgeProvider` 的真实 quote 读取
+2. 增加 `longbridge-oauth-quote` US/HK 只读行情验证（AAPL.US / 700.HK）
+3. 增加 `LongbridgeProvider` 的真实 quote 读取（仅 QuoteContext）
 4. 前端 RealtimeMarketView 增加真实 Longbridge 行情卡片
 5. 数据源切换从视觉原型升级为真实只读切换
 6. AkShare 作为 fallback，Longbridge 作为候选 / 可选高质量源

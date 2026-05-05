@@ -72,6 +72,7 @@ class LongbridgeOAuthStore:
             "updated_at": "",
             "masked_access_token": "",
             "token_path": str(self.token_path),
+            "sdk_managed": False,
         }
 
     def get_oauth_token_status(self) -> dict[str, Any]:
@@ -120,6 +121,14 @@ class LongbridgeOAuthStore:
                 "sdk_managed": bool(raw.get("sdk_managed", False)),
             }
         )
+
+        if summary["sdk_managed"] and not access_token:
+            summary["access_token"] = "sdk_managed"
+            summary["refresh_token"] = "sdk_managed_or_unknown"
+            summary["has_refresh_token"] = False
+            summary["masked_access_token"] = ""
+            summary["status"] = "sdk_managed_configured"
+            return summary
 
         if not access_token:
             summary["status"] = "missing"

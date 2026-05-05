@@ -36,6 +36,14 @@ def test_symbol_mapping_cn(provider: LongbridgeQuoteProvider) -> None:
     assert provider._to_longbridge_symbol("ABC123", "CN") is None
 
 
+def test_symbol_mapping_us_hk(provider: LongbridgeQuoteProvider) -> None:
+    assert provider._to_longbridge_symbol("AAPL", "US") == "AAPL.US"
+    assert provider._to_longbridge_symbol("AAPL.US", "US") == "AAPL.US"
+    assert provider._to_longbridge_symbol("700", "HK") == "700.HK"
+    assert provider._to_longbridge_symbol("00700", "HK") == "700.HK"
+    assert provider._to_longbridge_symbol("00700.HK", "HK") == "700.HK"
+
+
 def test_env_status_missing(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
@@ -98,10 +106,11 @@ def test_fetch_quote_oauth_required_without_legacy_token(
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("LONGBRIDGE_OAUTH_CLIENT_ID", raising=False)
     res = provider.fetch_quote("600519", market="CN")
-    assert res["data_status"] == "oauthbuilder_required"
-    assert res["auth_mode"] == "oauthbuilder_required"
-    assert "longbridge-oauth-start" in res["error_message"]
+    assert res["data_status"] == "oauth_client_registration_required"
+    assert res["auth_mode"] == "oauth_client_registration_required"
+    assert "注册 OAuth Client" in res["error_message"]
 
 
 def test_detects_oauth_local_token_mode(
@@ -127,6 +136,37 @@ def test_detects_oauth_local_token_mode(
     assert status["auth"]["auth_mode_candidate"] == "oauth2_local_token"
     assert status["local_oauth"]["access_token"] == "present"
     assert status["local_oauth"]["masked"].startswith("****")
+
+
+def test_detects_sdk_managed_oauth_status(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = LongbridgeQuoteProvider(project_root=tmp_path)
+    provider.oauth_store.save_oauth_metadata(
+        {
+            "scope": "quote",
+            "sdk_managed": True,
+            "note": "quote only; sdk managed",
+        }
+    )
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
+    monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
+    monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
+
+    status = provider.check_status()
+
+    assert status["auth"]["oauth"] == "configured"
+    assert status["auth"]["auth_mode_candidate"] == "oauth2_local_token"
+    assert status["local_oauth"]["status"] == "sdk_managed_configured"
+    assert status["local_oauth"]["access_token"] == "sdk_managed"
 
 
 def test_fetch_quote_sdk_missing(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -156,11 +196,13 @@ def test_status_identifies_oauthbuilder_requirement(provider: LongbridgeQuotePro
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
     monkeypatch.delenv("LONGBRIDGE_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("LONGBRIDGE_OAUTH_CLIENT_ID", raising=False)
 
     status = provider.check_status()
 
     assert status["oauthbuilder_available"] is True
-    assert status["auth"]["auth_mode_candidate"] == "oauthbuilder_required"
+    assert status["oauth_client"]["client_id_present"] is False
+    assert status["auth"]["auth_mode_candidate"] == "oauth_client_registration_required"
     assert status["auth"]["oauthbuilder"] == "supported"
 
 
@@ -257,6 +299,44 @@ def test_fetch_quote_with_oauth_local_token_mode(tmp_path, monkeypatch: pytest.M
     assert res["auth_mode"] == "oauth2_local_token"
 
 
+def test_fetch_quote_us_hk_success(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
+    monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
+    monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
+
+    class DummyLB:
+        pass
+
+    monkeypatch.setattr("app_core.data_sources.longbridge_quote_provider.lb", DummyLB(), raising=True)
+
+    def fake_snapshot(lb_symbol: str) -> dict[str, Any]:
+        return {
+            "name": "Demo",
+            "current_price": 123.4,
+            "change": 1.2,
+            "change_percent": 0.98,
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "raw_symbol": lb_symbol,
+        }
+
+    monkeypatch.setattr(provider, "_fetch_lb_quote_snapshot", fake_snapshot, raising=True)
+
+    us_result = provider.fetch_quote("AAPL", market="US")
+    hk_result = provider.fetch_quote("00700", market="HK")
+
+    assert us_result["data_status"] == "ok"
+    assert us_result["raw_symbol"] == "AAPL.US"
+    assert hk_result["data_status"] == "ok"
+    assert hk_result["raw_symbol"] == "700.HK"
+
+
 def test_fetch_quote_exception_sanitizes_error(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
@@ -277,3 +357,31 @@ def test_fetch_quote_exception_sanitizes_error(provider: LongbridgeQuoteProvider
     res = provider.fetch_quote("600519", market="CN")
     assert res["data_status"] == "fetch_failed"
     assert "ACCESS_TOKEN" not in res["error_message"]
+
+
+def test_fetch_quote_permission_required(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: {
+            "sdk_importable": True,
+            "available_symbols": {"OAuthBuilder": True},
+        },
+    )
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
+    monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
+    monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
+
+    class DummyLB:
+        pass
+
+    monkeypatch.setattr("app_core.data_sources.longbridge_quote_provider.lb", DummyLB(), raising=True)
+
+    def boom(_lb_symbol: str) -> dict[str, Any]:
+        raise RuntimeError("permission denied for quote package")
+
+    monkeypatch.setattr(provider, "_fetch_lb_quote_snapshot", boom, raising=True)
+
+    res = provider.fetch_quote("AAPL", market="US")
+
+    assert res["data_status"] == "permission_required"
+    assert "当前账号可能未开通对应市场 OpenAPI 实时行情权限" in res["error_message"]
