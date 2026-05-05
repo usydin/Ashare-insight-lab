@@ -35,6 +35,7 @@ from app_core.data_sources.longbridge_sdk_support import (
     inspect_longbridge_sdk,
     start_longbridge_oauth,
 )
+from app_core.data_sources.realtime_source_status import build_realtime_source_status
 from app_core.data_sources.realtime_quote_provider import AkShareRealtimeQuoteProvider
 from app_core.data_sources.manager import DataSourceManager
 from app_core.data_sources.index_provider import fetch_index_daily_history
@@ -925,6 +926,36 @@ def run_longbridge_quote_cli(argv: list[str]) -> int:
     return 0
 
 
+def run_source_status() -> int:
+    summary = build_realtime_source_status()
+    print(f"实时行情默认源: {summary['default_quote_source']}")
+
+    for source in summary["sources"]:
+        print(f"\n[{source['display_name']}]")
+        print(f"状态: {source['status']}")
+        print(f"标签: {source['status_label']}")
+        print(f"类别: {source['category']}")
+        if source["source_id"] == "longbridge":
+            print(f"认证: {source['auth_mode']}")
+            print(f"SDK: {source['sdk_status']}")
+            print(f"OAuth: {source['token_status']}")
+            print(
+                "安全: "
+                f"quote_only={str(source['quote_only']).lower()}, "
+                f"trade_enabled={str(source['trade_enabled']).lower()}"
+            )
+        elif source["source_id"] in {"marketaux", "tushare"}:
+            print(f"Token: {source['token_status']}")
+        print(f"说明: {source['note']}")
+
+    safety = summary["safety"]
+    print("\n[安全边界]")
+    print(f"quote_only: {str(safety['quote_only']).lower()}")
+    print(f"trade_enabled: {str(safety['trade_enabled']).lower()}")
+    print(f"order_enabled: {str(safety['order_enabled']).lower()}")
+    return 0
+
+
 def run_token_status() -> int:
     manager = LocalSecretManager()
     statuses = manager.get_secret_statuses()
@@ -1612,6 +1643,9 @@ def main() -> int:
     if sys.argv[1] == "longbridge-quote":
         return run_longbridge_quote_cli(sys.argv[2:])
 
+    if sys.argv[1] == "source-status":
+        return run_source_status()
+
     if sys.argv[1] == "token-status":
         return run_token_status()
 
@@ -1650,6 +1684,7 @@ def main() -> int:
     print("python app.py longbridge-oauth-start")
     print("python app.py longbridge-oauth-quote --symbol 600519 --market CN")
     print("python app.py longbridge-quote --symbol 600519 --market CN")
+    print("python app.py source-status")
     print("python app.py token-status")
     print("python app.py token-set --key MARKETAUX_API_TOKEN")
     print("python app.py token-clear --key MARKETAUX_API_TOKEN")

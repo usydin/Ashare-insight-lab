@@ -1,6 +1,4 @@
-import pytest
 import json
-from pathlib import Path
 from app_core.analytics.ui_snapshot_schema import (
     validate_ui_snapshot,
     write_ui_snapshot_contract,
@@ -16,6 +14,7 @@ def test_validate_ui_snapshot_valid():
         "generated_at": "2026-01-01",
         "latest_run": {"id": 1, "run_date": "2026-01-01", "status": "success"},
         "dashboard_summary": {},
+        "source_status": {"default_quote_source": "akshare", "sources": []},
         "review_queue": {"count": 0, "high_count": 0, "medium_count": 0, "low_count": 0, "items": []},
         "signal_changes": {"latest_run_id": 1, "previous_run_id": None, "summary": {}, "top_changes": []},
         "data_health": {"ok_count": 0},
@@ -50,7 +49,7 @@ def test_validate_ui_snapshot_invalid_types():
         "messages": "not_a_list"
     }
     # 先补齐 root 必须字段以免第一阶段校验直接返回
-    required = ["app", "generated_at", "latest_run", "dashboard_summary", "review_queue", "signal_changes", "data_health", "paths", "messages"]
+    required = ["app", "generated_at", "latest_run", "dashboard_summary", "source_status", "review_queue", "signal_changes", "data_health", "paths", "messages"]
     for r in required:
         if r not in snapshot: snapshot[r] = {}
         
@@ -65,6 +64,7 @@ def test_validate_ui_snapshot_latest_run_none():
         "generated_at": "...",
         "latest_run": None,
         "dashboard_summary": {},
+        "source_status": {"default_quote_source": "akshare", "sources": []},
         "review_queue": {"count":0, "high_count":0, "medium_count":0, "low_count":0, "items": []},
         "signal_changes": {"latest_run_id": None, "previous_run_id": None, "summary": {}, "top_changes": []},
         "data_health": {"ok_count": 0},
@@ -91,5 +91,6 @@ def test_write_contract_and_sample(tmp_path):
     with open(p2, "r", encoding="utf-8") as f:
         sample_data = json.load(f)
         assert "app" in sample_data
+        assert "source_status" in sample_data
         assert "review_queue" in sample_data
         assert validate_ui_snapshot(sample_data)["is_valid"] is True

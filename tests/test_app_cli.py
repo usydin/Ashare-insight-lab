@@ -919,3 +919,113 @@ def test_main_longbridge_quote_oauthbuilder_required(monkeypatch, capsys) -> Non
         assert result == 0
         assert "longbridge-oauth-start" in captured.out
         assert "Traceback" not in captured.out
+
+
+def test_main_source_status_outputs_sources(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "source-status"])
+    monkeypatch.setattr(
+        app,
+        "build_realtime_source_status",
+        lambda: {
+            "generated_at": "2026-05-05T12:00:00",
+            "default_quote_source": "akshare",
+            "sources": [
+                {
+                    "source_id": "akshare",
+                    "display_name": "AkShare",
+                    "category": "quote",
+                    "status": "available",
+                    "status_label": "可用",
+                    "token_status": "not_required",
+                    "note": "当前默认 A股实时行情源",
+                },
+                {
+                    "source_id": "longbridge",
+                    "display_name": "Longbridge",
+                    "category": "quote",
+                    "status": "blocked",
+                    "status_label": "待授权",
+                    "auth_mode": "oauthbuilder_required",
+                    "sdk_status": "installed",
+                    "token_status": "missing",
+                    "quote_only": True,
+                    "trade_enabled": False,
+                    "note": "OAuth 授权当前受 internal_server_error 阻塞，待配置确认",
+                },
+                {
+                    "source_id": "marketaux",
+                    "display_name": "Marketaux",
+                    "category": "news",
+                    "status": "available",
+                    "status_label": "已配置",
+                    "token_status": "configured",
+                    "note": "国际新闻源",
+                },
+            ],
+            "safety": {
+                "quote_only": True,
+                "trade_enabled": False,
+                "order_enabled": False,
+            },
+        },
+    )
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "实时行情默认源: akshare" in captured.out
+    assert "[AkShare]" in captured.out
+    assert "[Longbridge]" in captured.out
+    assert "[Marketaux]" in captured.out
+    assert "SDK: installed" in captured.out
+    assert "OAuth: missing" in captured.out
+    assert "quote_only=true, trade_enabled=false" in captured.out
+
+
+def test_main_source_status_does_not_output_real_token(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "source-status"])
+    monkeypatch.setattr(
+        app,
+        "build_realtime_source_status",
+        lambda: {
+            "generated_at": "2026-05-05T12:00:00",
+            "default_quote_source": "akshare",
+            "sources": [
+                {
+                    "source_id": "longbridge",
+                    "display_name": "Longbridge",
+                    "category": "quote",
+                    "status": "blocked",
+                    "status_label": "待授权",
+                    "auth_mode": "oauthbuilder_required",
+                    "sdk_status": "installed",
+                    "token_status": "missing",
+                    "quote_only": True,
+                    "trade_enabled": False,
+                    "note": "no raw token here",
+                },
+                {
+                    "source_id": "marketaux",
+                    "display_name": "Marketaux",
+                    "category": "news",
+                    "status": "available",
+                    "status_label": "已配置",
+                    "token_status": "configured",
+                    "note": "international news only",
+                },
+            ],
+            "safety": {
+                "quote_only": True,
+                "trade_enabled": False,
+                "order_enabled": False,
+            },
+        },
+    )
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "demo-secret-token-1234" not in captured.out
+    assert "demo-oauth-secret-9876" not in captured.out

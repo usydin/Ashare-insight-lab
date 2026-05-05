@@ -7,7 +7,7 @@
     "developer": "pL",
     "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
   },
-  "generated_at": "2026-05-04T22:57:27",
+  "generated_at": "2026-05-05T17:00:00",
   "latest_run": {
     "id": 15,
     "run_date": "2026-05-04",
@@ -225,6 +225,68 @@
         }
       ]
     }
+  },
+  "source_status": {
+    "default_quote_source": "akshare",
+    "sources": [
+      {
+        "source_id": "akshare",
+        "display_name": "AkShare A股实时行情",
+        "category": "quote",
+        "status": "available",
+        "status_label": "可用",
+        "priority": "primary",
+        "supports": [
+          "CN_quote",
+          "CN_kline"
+        ],
+        "requires_token": false,
+        "token_status": "not_required",
+        "note": "当前默认 A股实时行情源"
+      },
+      {
+        "source_id": "longbridge",
+        "display_name": "Longbridge OpenAPI 只读行情",
+        "category": "quote",
+        "status": "blocked",
+        "status_label": "待授权",
+        "priority": "candidate",
+        "supports": [
+          "CN_quote",
+          "US_quote",
+          "HK_quote"
+        ],
+        "requires_token": true,
+        "token_status": "missing",
+        "sdk_status": "installed",
+        "auth_mode": "oauthbuilder_required",
+        "quote_only": true,
+        "trade_enabled": false,
+        "note": "OAuth 授权当前受 internal_server_error 阻塞，待 Longbridge 配置确认"
+      },
+      {
+        "source_id": "marketaux",
+        "display_name": "Marketaux 国际新闻",
+        "category": "news",
+        "status": "available",
+        "status_label": "已配置",
+        "priority": "news",
+        "requires_token": true,
+        "token_status": "configured",
+        "note": "用于国际市场新闻，不作为交易信号"
+      },
+      {
+        "source_id": "tushare",
+        "display_name": "Tushare Pro",
+        "category": "data",
+        "status": "reserved",
+        "status_label": "预留",
+        "priority": "future",
+        "requires_token": true,
+        "token_status": "missing",
+        "note": "预留用于 A股历史、财务与基础数据"
+      }
+    ]
   },
   "review_queue": {
     "count": 4,

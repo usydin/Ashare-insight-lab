@@ -54,7 +54,7 @@ function App() {
       case 'dashboard':
         return <DashboardView data={data} />;
       case 'realtime-market':
-        return <RealtimeMarketView />;
+        return <RealtimeMarketView data={data} />;
       case 'market_indices':
         return <MarketIndexView data={data} />;
       case 'sector_boards':

@@ -12,10 +12,13 @@ def get_ui_snapshot_required_schema() -> dict[str, Any]:
     return {
         "root": [
             "app", "generated_at", "latest_run", "dashboard_summary",
-            "review_queue", "signal_changes", "data_health", "paths", "messages"
+            "source_status", "review_queue", "signal_changes", "data_health", "paths", "messages"
         ],
         "app": [
             "name_cn", "name_en", "version", "stage", "developer", "copyright"
+        ],
+        "source_status": [
+            "default_quote_source", "sources"
         ],
         "paths": [
             "database", "daily_report", "dashboard_summary_json",
@@ -69,6 +72,17 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
             _add_error(result, "Field 'app.version' must be a non-empty string")
 
     # 3. paths 节点校验
+    source_status = snapshot.get("source_status", {})
+    if not isinstance(source_status, dict):
+        _add_error(result, "Field 'source_status' must be a dictionary")
+    else:
+        for field in schema["source_status"]:
+            if field not in source_status:
+                _add_error(result, f"Missing required 'source_status' field: '{field}'")
+        if not isinstance(source_status.get("sources"), list):
+            _add_error(result, "Field 'source_status.sources' must be a list")
+
+    # 4. paths 节点校验
     paths = snapshot.get("paths", {})
     if not isinstance(paths, dict):
         _add_error(result, "Field 'paths' must be a dictionary")
@@ -79,7 +93,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not paths.get("ui_snapshot_json"):
             _add_error(result, "Field 'paths.ui_snapshot_json' must be a non-empty string")
 
-    # 4. review_queue 节点校验
+    # 5. review_queue 节点校验
     review_queue = snapshot.get("review_queue", {})
     if not isinstance(review_queue, dict):
         _add_error(result, "Field 'review_queue' must be a dictionary")
@@ -90,11 +104,11 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(review_queue.get("items"), list):
             _add_error(result, "Field 'review_queue.items' must be a list")
 
-    # 5. messages 校验
+    # 6. messages 校验
     if not isinstance(snapshot.get("messages"), list):
         _add_error(result, "Field 'messages' must be a list")
 
-    # 6. latest_run 校验
+    # 7. latest_run 校验
     latest_run = snapshot.get("latest_run")
     if latest_run is not None:
         if not isinstance(latest_run, dict):
@@ -104,7 +118,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
                 if field not in latest_run:
                     _add_error(result, f"Field 'latest_run' missing required property: '{field}'")
 
-    # 7. data_health 校验
+    # 8. data_health 校验
     data_health = snapshot.get("data_health", {})
     if not isinstance(data_health, dict):
         _add_warning(result, "Field 'data_health' should be a dictionary")
@@ -112,7 +126,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if "risk_item_count" not in data_health and "ok_count" not in data_health:
             _add_warning(result, "Field 'data_health' should contain 'risk_item_count' or 'ok_count'")
 
-    # 8. signal_changes 校验
+    # 9. signal_changes 校验
     signal_changes = snapshot.get("signal_changes", {})
     if not isinstance(signal_changes, dict):
         _add_error(result, "Field 'signal_changes' must be a dictionary")
@@ -173,6 +187,23 @@ def write_sample_ui_snapshot(
                 "sector": {"bullish": 1, "bearish": 0, "neutral": 0},
                 "stock": {"bullish": 0, "bearish": 1, "neutral": 0}
             }
+        },
+        "source_status": {
+            "default_quote_source": "akshare",
+            "sources": [
+                {
+                    "source_id": "akshare",
+                    "display_name": "AkShare A股实时行情",
+                    "category": "quote",
+                    "status": "available",
+                    "status_label": "可用",
+                    "priority": "primary",
+                    "supports": ["CN_quote", "CN_kline"],
+                    "requires_token": False,
+                    "token_status": "not_required",
+                    "note": "当前默认 A股实时行情源"
+                }
+            ]
         },
         "review_queue": {
             "count": 1,

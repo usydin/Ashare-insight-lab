@@ -1,8 +1,79 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-const RealtimeMarketView = () => {
+const fallbackSourceStatus = {
+  default_quote_source: 'akshare',
+  sources: [
+    {
+      source_id: 'akshare',
+      display_name: 'AkShare A股实时行情',
+      status: 'available',
+      status_label: '可用',
+      category: 'quote',
+      note: '当前默认 A股实时行情源',
+      token_status: 'not_required',
+      quote_only: true,
+      trade_enabled: false,
+    },
+    {
+      source_id: 'longbridge',
+      display_name: 'Longbridge OpenAPI 只读行情',
+      status: 'blocked',
+      status_label: '待授权',
+      category: 'quote',
+      note: 'OAuth 授权当前受 internal_server_error 阻塞，待 Longbridge 配置确认',
+      token_status: 'oauth_required',
+      quote_only: true,
+      trade_enabled: false,
+    },
+    {
+      source_id: 'marketaux',
+      display_name: 'Marketaux 国际新闻',
+      status: 'available',
+      status_label: '已配置',
+      category: 'news',
+      note: '国际市场新闻源',
+      token_status: 'configured',
+      quote_only: true,
+      trade_enabled: false,
+    },
+    {
+      source_id: 'tushare',
+      display_name: 'Tushare Pro',
+      status: 'reserved',
+      status_label: '预留',
+      category: 'data',
+      note: '预留用于 A股历史、财务与基础数据',
+      token_status: 'missing',
+      quote_only: true,
+      trade_enabled: false,
+    }
+  ]
+};
+
+const getStatusPillClass = (status) => {
+  if (status === 'available') return 'success';
+  if (status === 'blocked') return 'missing';
+  return 'unknown';
+};
+
+const formatSourceLabel = (sourceId) => {
+  if (sourceId === 'akshare') return 'AkShare';
+  if (sourceId === 'longbridge') return 'Longbridge';
+  if (sourceId === 'marketaux') return 'Marketaux';
+  if (sourceId === 'tushare') return 'Tushare';
+  return sourceId;
+};
+
+const RealtimeMarketView = ({ data }) => {
   const [selectedTicker, setSelectedTicker] = useState('600519.SH');
   const [period, setPeriod] = useState('daily');
+  const [selectedSource, setSelectedSource] = useState('akshare');
+  const sourceStatus = data?.source_status || fallbackSourceStatus;
+  const quoteSources = sourceStatus.sources.filter((item) => item.category === 'quote' || item.source_id === 'tushare');
+  const defaultSource = quoteSources.find((item) => item.source_id === sourceStatus.default_quote_source) || quoteSources[0];
+  const longbridgeSource = sourceStatus.sources.find((item) => item.source_id === 'longbridge');
+  const marketauxSource = sourceStatus.sources.find((item) => item.source_id === 'marketaux');
+  const tushareSource = sourceStatus.sources.find((item) => item.source_id === 'tushare');
 
   const mockData = [
     {
@@ -119,6 +190,94 @@ const RealtimeMarketView = () => {
           <div className="api-status-card">
             <div className="meta-label">安全提示</div>
             <div className="meta-value">仅用于数据展示，不构成投资建议</div>
+          </div>
+        </section>
+
+        <section className="quote-table-card" style={{ marginBottom: '20px' }}>
+          <div className="section-heading" style={{ marginBottom: '12px' }}>行情源状态</div>
+          <div className="api-status-grid" style={{ marginBottom: '16px' }}>
+            <div className="api-status-card">
+              <div className="meta-label">当前默认行情源</div>
+              <div className="meta-value">{formatSourceLabel(sourceStatus.default_quote_source)}</div>
+            </div>
+            <div className="api-status-card">
+              <div className="meta-label">Longbridge OpenAPI</div>
+              <div className="meta-value">{longbridgeSource ? `${longbridgeSource.status_label} / ${longbridgeSource.auth_mode}` : '待授权 / OAuth 阻塞'}</div>
+            </div>
+            <div className="api-status-card">
+              <div className="meta-label">Marketaux 新闻</div>
+              <div className="meta-value">{marketauxSource?.status_label || '已配置'}</div>
+            </div>
+            <div className="api-status-card">
+              <div className="meta-label">Tushare</div>
+              <div className="meta-value">{tushareSource?.status_label || '预留'}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            {quoteSources.map((source) => {
+              const selectable = source.source_id === sourceStatus.default_quote_source;
+              const active = selectedSource === source.source_id;
+              const helperText = selectable
+                ? '默认选中'
+                : source.source_id === 'longbridge'
+                  ? '待 OAuth 授权'
+                  : '预留';
+              return (
+                <button
+                  key={source.source_id}
+                  type="button"
+                  onClick={() => selectable && setSelectedSource(source.source_id)}
+                  style={{
+                    borderRadius: '10px',
+                    border: active ? '1px solid rgba(10,132,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                    background: active ? 'rgba(10,132,255,0.12)' : 'rgba(255,255,255,0.04)',
+                    color: selectable ? 'var(--mac-text-primary)' : 'var(--mac-text-secondary)',
+                    padding: '10px 12px',
+                    minWidth: '150px',
+                    cursor: selectable ? 'pointer' : 'not-allowed',
+                    textAlign: 'left',
+                    opacity: selectable ? 1 : 0.8,
+                  }}
+                >
+                  <div style={{ fontSize: '12px', fontWeight: 600 }}>{source.display_name}</div>
+                  <div style={{ fontSize: '11px', marginTop: '4px' }}>{source.status_label}</div>
+                  <div style={{ fontSize: '10px', marginTop: '4px', color: 'var(--mac-text-secondary)' }}>{helperText}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="api-status-grid" style={{ marginBottom: 0 }}>
+            {sourceStatus.sources.map((source) => (
+              <div
+                key={source.source_id}
+                className="api-status-card"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <div className="meta-row" style={{ paddingTop: 0 }}>
+                  <span className="meta-label">{source.display_name}</span>
+                  <span className={`status-pill ${getStatusPillClass(source.status)}`}>{source.status_label}</span>
+                </div>
+                <div className="meta-row">
+                  <span className="meta-label">Token</span>
+                  <span className="meta-value">{source.token_status || 'not_required'}</span>
+                </div>
+                {source.source_id === 'longbridge' && (
+                  <div className="meta-row">
+                    <span className="meta-label">安全</span>
+                    <span className="meta-value">quote_only={String(source.quote_only)}, trade_enabled={String(source.trade_enabled)}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: '11px', color: 'var(--mac-text-secondary)', lineHeight: 1.6 }}>
+                  {source.note}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="quote-disclaimer" style={{ marginTop: '14px' }}>
+            数据源切换当前仅为视觉原型。默认仍使用 {defaultSource?.display_name || 'AkShare'}，Longbridge 需待 OAuth 授权阻塞解除后再接入真实切换。
           </div>
         </section>
 

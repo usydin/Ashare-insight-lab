@@ -8,6 +8,7 @@ from typing import Any
 from app_core.analytics.dashboard_summary import build_dashboard_summary
 from app_core.analytics.review_queue import build_review_queue
 from app_core.analytics.history_summary import build_signal_change_summary
+from app_core.data_sources.realtime_source_status import build_realtime_source_status
 from app_core.project_info import (
     APP_NAME_CN,
     APP_NAME_EN,
@@ -26,6 +27,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
     dashboard = build_dashboard_summary(database_path)
     queue = build_review_queue(database_path)
     changes = build_signal_change_summary(database_path=database_path)
+    source_status = build_realtime_source_status()
     
     latest_run = dashboard.get("latest_run")
     messages = []
@@ -62,6 +64,10 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "latest_run": latest_run,
         "dashboard_summary": dashboard,
+        "source_status": {
+            "default_quote_source": source_status["default_quote_source"],
+            "sources": source_status["sources"],
+        },
         "review_queue": {
             "count": queue_count,
             "high_count": high_count,

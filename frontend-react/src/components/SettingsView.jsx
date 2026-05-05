@@ -10,6 +10,15 @@ const SettingsView = ({ data }) => {
   );
   
   const { app } = data;
+  const sourceStatus = data?.source_status || {
+    default_quote_source: 'akshare',
+    sources: [],
+  };
+  const sourceMap = Object.fromEntries((sourceStatus.sources || []).map((item) => [item.source_id, item]));
+  const longbridgeSource = sourceMap.longbridge || {};
+  const marketauxSource = sourceMap.marketaux || {};
+  const tushareSource = sourceMap.tushare || {};
+  const akshareSource = sourceMap.akshare || {};
 
   return (
     <div id="settingsView" className="view-container active">
@@ -50,88 +59,87 @@ const SettingsView = ({ data }) => {
       </section>
 
       <section className="panel-section animate-in" style={{ animationDelay: '0.25s' }}>
-        <div className="section-heading">🔌 长桥 OpenAPI 只读行情（候选源）</div>
+        <div className="section-heading">🔐 API Token 状态</div>
         <div className="state-card">
-          <div className="meta-row">
-            <span className="meta-label">当前接入</span>
-            <span className="meta-value">只读行情原型，CLI 可用</span>
+          <div style={{ fontSize: '12px', color: 'var(--mac-text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
+            本页面只显示凭证状态和 CLI 指引，不展示完整 token、不展示完整授权 URL，也不提供前端录入入口。真实凭证仅保存在本机 `.env` 或 `.secrets`。
           </div>
           <div className="meta-row">
-            <span className="meta-label">默认数据源</span>
-            <span className="meta-value">AkShare</span>
+            <span className="meta-label">Marketaux Token</span>
+            <span className="meta-value">状态查看：python3 app.py token-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">更新 Marketaux Token</span>
+            <span className="meta-value code">python3 app.py token-set --key MARKETAUX_API_TOKEN</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge App Key / Secret</span>
+            <span className="meta-value">状态查看：python3 app.py longbridge-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge OAuth Token</span>
+            <span className="meta-value">状态查看：python3 app.py longbridge-oauth-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge OAuth 指引</span>
+            <span className="meta-value code">python3 app.py longbridge-oauth-help</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">OpenAI</span>
+            <span className="meta-value">状态查看：python3 app.py token-status</span>
           </div>
           <div className="meta-row" style={{ border: 'none' }}>
-            <span className="meta-label">候选数据源</span>
-            <span className="meta-value">Longbridge（后续评估实时推送与批量刷新）</span>
-          </div>
-          <div className="meta-row" style={{ marginTop: '8px' }}>
-            <span className="meta-label">CLI 检测</span>
-            <span className="meta-value code">python3 app.py longbridge-status</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">示例查询</span>
-            <span className="meta-value code">python3 app.py longbridge-quote --symbol 600519 --market CN</span>
-          </div>
-          <div className="meta-row" style={{ border: 'none' }}>
-            <span className="meta-label">安全提示</span>
-            <span className="meta-value" style={{ fontSize: '11px' }}>不读取/不保存/不显示 token；环境变量仅用于命令行检测。</span>
+            <span className="meta-label">Tushare</span>
+            <span className="meta-value">状态查看：python3 app.py token-status</span>
           </div>
         </div>
       </section>
 
       <section className="panel-section animate-in" style={{ animationDelay: '0.28s' }}>
-        <div className="section-heading">🔐 本地 API Token 状态</div>
+        <div className="section-heading">🛰️ 数据源状态</div>
         <div className="state-card">
           <div style={{ fontSize: '12px', color: 'var(--mac-text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
-            本页面仅显示本机 API 凭证的脱敏状态，不展示完整 Token。真实 Token 保存在本机 `.env` 或 `.secrets` 中，不会进入 Git。
+            数据源状态与凭证状态分开展示。当前默认行情源为 AkShare，Longbridge 仅作为候选只读行情源，待 OAuth 阻塞解除后再启用真实切换。
           </div>
           <div className="meta-row">
-            <span className="meta-label">Marketaux 新闻 API</span>
-            <span className="meta-value">状态查看：python3 app.py token-status</span>
+            <span className="meta-label">AkShare</span>
+            <span className="meta-value">{akshareSource.status_label || '可用'} / 默认行情源</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">替换 Marketaux Token</span>
-            <span className="meta-value code">python3 app.py token-set --key MARKETAUX_API_TOKEN</span>
+            <span className="meta-label">Longbridge</span>
+            <span className="meta-value">{longbridgeSource.status_label || '待授权'} / {longbridgeSource.auth_mode || 'oauthbuilder_required'}</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">Longbridge 行情 API</span>
-            <span className="meta-value">App Key / Secret 已配置，Legacy Access Token 未配置</span>
+            <span className="meta-label">Longbridge 安全边界</span>
+            <span className="meta-value">quote_only=true / trade_enabled=false</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">Longbridge OAuth Token</span>
-            <span className="meta-value">未配置 / 已配置 / 已过期，仅显示脱敏状态</span>
+            <span className="meta-label">Marketaux</span>
+            <span className="meta-value">{marketauxSource.status_label || '已配置'} / 国际新闻源</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">推荐下一步</span>
-            <span className="meta-value code">python3 app.py longbridge-oauth-help</span>
+            <span className="meta-label">Tushare</span>
+            <span className="meta-value">{tushareSource.status_label || '预留'} / 历史与财务数据预留</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">OAuthBuilder 验证</span>
-            <span className="meta-value">待执行 / 已支持 CLI</span>
+            <span className="meta-label">统一状态摘要</span>
+            <span className="meta-value code">python3 app.py source-status</span>
           </div>
           <div className="meta-row">
-            <span className="meta-label">只读行情验证命令</span>
+            <span className="meta-label">Longbridge CLI 检测</span>
+            <span className="meta-value code">python3 app.py longbridge-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge 只读行情研究</span>
             <span className="meta-value code">python3 app.py longbridge-oauth-quote --symbol 600519 --market CN</span>
           </div>
           <div className="meta-row">
             <span className="meta-label">安全边界</span>
-            <span className="meta-value">只读行情，不接交易</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">前端输入</span>
-            <span className="meta-value">不在前端输入 token</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">SDK 探测</span>
-            <span className="meta-value code">python3 app.py longbridge-sdk-status</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">OpenAI API</span>
-            <span className="meta-value">用于后续 AI 摘要、研报与投研助手</span>
+            <span className="meta-value">只读行情，不接交易，不读资产/持仓，不下单/撤单</span>
           </div>
           <div className="meta-row" style={{ border: 'none' }}>
-            <span className="meta-label">Tushare Pro</span>
-            <span className="meta-value">预留：A股历史数据、财务数据、基础数据</span>
+            <span className="meta-label">前端交互</span>
+            <span className="meta-value">数据源切换当前仅为视觉原型，不影响后端真实取数</span>
           </div>
         </div>
       </section>

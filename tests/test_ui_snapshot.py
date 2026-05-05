@@ -1,6 +1,5 @@
 import pytest
 import json
-from pathlib import Path
 from app_core.storage.sqlite_store import ensure_database, insert_run_daily_snapshot
 from app_core.analytics.ui_snapshot import build_ui_snapshot, write_ui_snapshot_json
 
@@ -16,6 +15,8 @@ def test_build_ui_snapshot_empty(temp_db):
     app = snapshot["app"]
     assert app["version"] == "0.7.2"
     assert app["developer"] == "pL"
+    assert snapshot["source_status"]["default_quote_source"] == "akshare"
+    assert isinstance(snapshot["source_status"]["sources"], list)
 
 def test_build_ui_snapshot_with_data(temp_db):
     ensure_database(temp_db)
@@ -42,6 +43,7 @@ def test_build_ui_snapshot_with_data(temp_db):
     assert snapshot["review_queue"]["count"] > 0
     assert snapshot["paths"]["ui_snapshot_json"] == "data/processed/ui_snapshot.json"
     assert snapshot["paths"]["daily_report"] == "reports/daily/2026-05-03_report.md"
+    assert snapshot["source_status"]["default_quote_source"] == "akshare"
 
 def test_write_ui_snapshot_json(temp_db, tmp_path):
     ensure_database(temp_db)
@@ -57,3 +59,5 @@ def test_write_ui_snapshot_json(temp_db, tmp_path):
         assert data["latest_run"]["run_date"] == "2026-05-03"
         assert "dashboard_summary" in data
         assert "review_queue" in data
+        assert "source_status" in data
+        assert "demo-secret-token-1234" not in json.dumps(data, ensure_ascii=False)
