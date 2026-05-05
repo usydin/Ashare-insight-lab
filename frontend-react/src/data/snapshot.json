@@ -7,7 +7,7 @@
     "developer": "pL",
     "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
   },
-  "generated_at": "2026-05-05T21:20:42",
+  "generated_at": "2026-05-05T22:05:41",
   "latest_run": {
     "id": 15,
     "run_date": "2026-05-04",
@@ -260,6 +260,16 @@
         "token_status": "configured",
         "sdk_status": "installed",
         "auth_mode": "legacy_configured",
+        "token_expiry": {
+          "provider": "longbridge",
+          "key": "LONGBRIDGE_ACCESS_TOKEN",
+          "status": "ok",
+          "expires_at_utc": "2026-08-03T13:09:05+00:00",
+          "days_remaining": 89,
+          "message": "token 有效",
+          "quote_only": true,
+          "trade_enabled": false
+        },
         "quote_only": true,
         "trade_enabled": false,
         "note": "已检测到 legacy 只读行情凭证，可作为候选行情源"
@@ -287,6 +297,16 @@
         "note": "预留用于 A股历史、财务与基础数据"
       }
     ]
+  },
+  "token_expiry": {
+    "provider": "longbridge",
+    "key": "LONGBRIDGE_ACCESS_TOKEN",
+    "status": "ok",
+    "expires_at_utc": "2026-08-03T13:09:05+00:00",
+    "days_remaining": 89,
+    "message": "token 有效",
+    "quote_only": true,
+    "trade_enabled": false
   },
   "realtime_quotes": {
     "provider": "longbridge",

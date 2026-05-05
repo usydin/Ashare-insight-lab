@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app_core.data_sources.longbridge_sdk_support import inspect_longbridge_sdk
+from app_core.security.local_secret_manager import LocalSecretManager
 from app_core.security.longbridge_oauth_store import LongbridgeOAuthStore
 
 try:
@@ -33,6 +34,7 @@ class LongbridgeQuoteProvider:
         oauth_store: LongbridgeOAuthStore | None = None,
     ) -> None:
         self.provider_name = "longbridge"
+        self.project_root = project_root
         self.oauth_store = oauth_store or LongbridgeOAuthStore(project_root=project_root)
 
     def check_status(self) -> dict[str, Any]:
@@ -49,6 +51,14 @@ class LongbridgeQuoteProvider:
         oauth_status = self.oauth_store.get_oauth_token_status()
         auth_state = self._resolve_auth_state()
         client_id_present = bool(os.getenv(OAUTH_CLIENT_ID_KEY))
+        secret_manager = LocalSecretManager(project_root=self.project_root)
+        access_token_status = secret_manager.get_secret_status("LONGBRIDGE_ACCESS_TOKEN")
+        token_expiry = {
+            "access_token_expiry_status": access_token_status.get("expiry_status", "missing"),
+            "expires_at_utc": access_token_status.get("expires_at_utc", ""),
+            "days_remaining": access_token_status.get("days_remaining"),
+            "message": access_token_status.get("expiry_message", ""),
+        }
         return {
             "provider": self.provider_name,
             "sdk_importable": sdk_importable,
@@ -74,6 +84,7 @@ class LongbridgeQuoteProvider:
                 "masked": oauth_status["masked_access_token"],
                 "status": oauth_status["status"],
             },
+            "token_expiry": token_expiry,
             "safety": {
                 "quote_only": True,
                 "trade_enabled": False,

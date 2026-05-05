@@ -699,6 +699,13 @@ def run_longbridge_status() -> int:
     print(f"- expires_at: {status['local_oauth']['expires_at'] or '-'}")
     print(f"- masked: {status['local_oauth']['masked']}")
     print(f"- sdk_managed: {str(status['local_oauth'].get('sdk_managed', False)).lower()}")
+    token_expiry = status.get("token_expiry", {})
+    print("token_expiry:")
+    print(f"- access_token_expiry_status: {token_expiry.get('access_token_expiry_status', 'missing')}")
+    print(f"- expires_at_utc: {token_expiry.get('expires_at_utc') or '-'}")
+    days_remaining = token_expiry.get("days_remaining")
+    print(f"- days_remaining: {days_remaining if days_remaining is not None else '-'}")
+    print(f"- message: {token_expiry.get('message') or '-'}")
     print("optional_env:")
     for key, value in status["optional_env"].items():
         print(f"- {key}: {value}")
@@ -997,6 +1004,13 @@ def run_source_status() -> int:
             print(f"认证: {source['auth_mode']}")
             print(f"SDK: {source['sdk_status']}")
             print(f"OAuth: {source['token_status']}")
+            token_expiry = source.get("token_expiry", {})
+            print(f"Token 到期等级: {token_expiry.get('status', 'missing')}")
+            print(f"Token 到期时间UTC: {token_expiry.get('expires_at_utc') or '-'}")
+            days_remaining = token_expiry.get("days_remaining")
+            print(f"Token 剩余天数: {days_remaining if days_remaining is not None else '-'}")
+            if token_expiry.get("message"):
+                print(f"Token 提示: {token_expiry['message']}")
             print(
                 "安全: "
                 f"quote_only={str(source['quote_only']).lower()}, "
@@ -1015,6 +1029,7 @@ def run_source_status() -> int:
 
 
 def run_token_status() -> int:
+    LocalSecretManager.load_local_env_to_process_env()
     manager = LocalSecretManager()
     statuses = manager.get_secret_statuses()
 
@@ -1029,6 +1044,31 @@ def run_token_status() -> int:
         print(f"更新时间: {item['updated_at'] or '-'}")
         print(f"最近检测: {item['last_checked_at'] or '-'}")
         print(f"备注: {item['note']}")
+        if item.get("supports_expiry_monitor"):
+            print(f"到期时间UTC: {item.get('expires_at_utc') or '-'}")
+            days_remaining = item.get("days_remaining")
+            print(f"剩余天数: {days_remaining if days_remaining is not None else '-'}")
+            print(f"到期等级: {item.get('expiry_status', 'missing')}")
+            print(f"到期提示: {item.get('expiry_message') or '-'}")
+    return 0
+
+
+def run_token_expiry_status() -> int:
+    LocalSecretManager.load_local_env_to_process_env()
+    manager = LocalSecretManager()
+    statuses = manager.get_token_expiry_statuses()
+
+    print("API Token 到期状态")
+    for item in statuses:
+        print(f"\n[{item['display_name']}]")
+        print(f"Key: {item['key']}")
+        print(f"状态: {item['status']}")
+        print(f"脱敏值: {item['masked']}")
+        print(f"到期时间UTC: {item.get('expires_at_utc') or '-'}")
+        days_remaining = item.get("days_remaining")
+        print(f"剩余天数: {days_remaining if days_remaining is not None else '-'}")
+        print(f"到期等级: {item.get('expiry_status', 'missing')}")
+        print(f"说明: {item.get('expiry_message') or '-'}")
     return 0
 
 
@@ -1710,6 +1750,9 @@ def main() -> int:
     if sys.argv[1] == "token-status":
         return run_token_status()
 
+    if sys.argv[1] == "token-expiry-status":
+        return run_token_expiry_status()
+
     if sys.argv[1] == "token-set":
         return run_token_set(sys.argv[2:])
 
@@ -1748,6 +1791,7 @@ def main() -> int:
     print("python app.py longbridge-quote --symbol 600519 --market CN")
     print("python app.py source-status")
     print("python app.py token-status")
+    print("python app.py token-expiry-status")
     print("python app.py token-set --key MARKETAUX_API_TOKEN")
     print("python app.py token-clear --key MARKETAUX_API_TOKEN")
     return 1

@@ -391,6 +391,8 @@ def test_main_longbridge_status_without_env(monkeypatch, capsys, tmp_path) -> No
                 assert "LONGBRIDGE_APP_KEY: missing" in captured.out
                 assert "auth_mode_candidate: missing_app_credentials" in captured.out
                 assert "token_file: missing" in captured.out
+                assert "token_expiry:" in captured.out
+                assert "access_token_expiry_status: missing" in captured.out
 
 
 def test_main_longbridge_sdk_status_sdk_missing(monkeypatch, capsys) -> None:
@@ -472,6 +474,11 @@ def test_main_token_status_does_not_output_real_token(monkeypatch, capsys) -> No
             "updated_at": "2026-05-05T10:00:00",
             "last_checked_at": "2026-05-05T10:10:00",
             "note": "国际市场新闻",
+            "supports_expiry_monitor": True,
+            "expires_at_utc": "",
+            "days_remaining": None,
+            "expiry_status": "not_jwt",
+            "expiry_message": "当前 token 不是 JWT-like，需人工维护到期日期",
         }
     ]
 
@@ -481,7 +488,37 @@ def test_main_token_status_does_not_output_real_token(monkeypatch, capsys) -> No
 
         assert result == 0
         assert "****1234" in captured.out
+        assert "到期等级: not_jwt" in captured.out
         assert "demo-secret-1234" not in captured.out
+
+
+def test_main_token_expiry_status_outputs_expiry_summary(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "token-expiry-status"])
+    mock_manager = MagicMock()
+    mock_manager.get_token_expiry_statuses.return_value = [
+        {
+            "key": "LONGBRIDGE_ACCESS_TOKEN",
+            "provider": "Longbridge",
+            "display_name": "Longbridge Access Token",
+            "status": "configured",
+            "masked": "****NcTY",
+            "expires_at_utc": "2026-08-03T13:09:05+00:00",
+            "days_remaining": 89,
+            "expiry_status": "ok",
+            "expiry_message": "token 有效",
+        }
+    ]
+
+    with patch("app.LocalSecretManager", return_value=mock_manager):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "API Token 到期状态" in captured.out
+        assert "Longbridge Access Token" in captured.out
+        assert "到期等级: ok" in captured.out
+        assert "****NcTY" in captured.out
+        assert "LONGBRIDGE_ACCESS_TOKEN=" not in captured.out
 
 
 def test_main_token_set_uses_getpass_and_masks_output(monkeypatch, capsys) -> None:
@@ -532,6 +569,7 @@ def test_help_contains_token_commands(monkeypatch, capsys) -> None:
 
     assert result == 1
     assert "token-status" in captured.out
+    assert "token-expiry-status" in captured.out
     assert "token-set --key MARKETAUX_API_TOKEN" in captured.out
     assert "token-clear --key MARKETAUX_API_TOKEN" in captured.out
 
@@ -1101,14 +1139,20 @@ def test_main_source_status_outputs_sources(monkeypatch, capsys) -> None:
                     "source_id": "longbridge",
                     "display_name": "Longbridge",
                     "category": "quote",
-                    "status": "blocked",
-                    "status_label": "待授权",
-                    "auth_mode": "oauthbuilder_required",
+                    "status": "warning",
+                    "status_label": "临近到期",
+                    "auth_mode": "legacy_configured",
                     "sdk_status": "installed",
-                    "token_status": "missing",
+                    "token_status": "configured",
+                    "token_expiry": {
+                        "status": "danger",
+                        "expires_at_utc": "2026-08-03T13:09:05+00:00",
+                        "days_remaining": 5,
+                        "message": "token 将在 7 天内到期，请尽快更新",
+                    },
                     "quote_only": True,
                     "trade_enabled": False,
-                    "note": "OAuth 授权当前受 internal_server_error 阻塞，待配置确认",
+                    "note": "Longbridge Access Token 临近到期，请提前更新 .env 中 LONGBRIDGE_ACCESS_TOKEN",
                 },
                 {
                     "source_id": "marketaux",
@@ -1137,7 +1181,9 @@ def test_main_source_status_outputs_sources(monkeypatch, capsys) -> None:
     assert "[Longbridge]" in captured.out
     assert "[Marketaux]" in captured.out
     assert "SDK: installed" in captured.out
-    assert "OAuth: missing" in captured.out
+    assert "OAuth: configured" in captured.out
+    assert "Token 到期等级: danger" in captured.out
+    assert "Token 到期时间UTC: 2026-08-03T13:09:05+00:00" in captured.out
     assert "quote_only=true, trade_enabled=false" in captured.out
 
 

@@ -25,6 +25,16 @@ def test_build_ui_snapshot_includes_realtime_quotes(tmp_path):
             "stock_changes": []
         }
         mock_status.return_value = {"default_quote_source": "akshare", "sources": []}
+        mock_status.return_value["token_expiry"] = {
+            "provider": "longbridge",
+            "key": "LONGBRIDGE_ACCESS_TOKEN",
+            "status": "ok",
+            "expires_at_utc": "2026-08-03T13:09:05+00:00",
+            "days_remaining": 89,
+            "message": "token 有效",
+            "quote_only": True,
+            "trade_enabled": False,
+        }
         mock_quotes.return_value = {
             "provider": "longbridge",
             "status": "ok",
@@ -34,7 +44,9 @@ def test_build_ui_snapshot_includes_realtime_quotes(tmp_path):
         snapshot = build_ui_snapshot()
         
         assert "realtime_quotes" in snapshot
+        assert "token_expiry" in snapshot
         assert snapshot["realtime_quotes"]["provider"] == "longbridge"
+        assert snapshot["token_expiry"]["status"] == "ok"
         assert len(snapshot["realtime_quotes"]["items"]) == 1
         assert snapshot["realtime_quotes"]["items"][0]["symbol"] == "600519"
         

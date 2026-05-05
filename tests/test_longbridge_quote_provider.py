@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import base64
+import json
 import pytest
 
 from app_core.data_sources.longbridge_quote_provider import LongbridgeQuoteProvider
@@ -25,6 +27,13 @@ def _save_oauth_token(tmp_path, access_token: str = "oauth_demo", expires_at: st
             "note": "quote only",
         }
     )
+
+
+def _build_jwt(payload: dict[str, object]) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = base64.urlsafe_b64encode(json.dumps(header).encode("utf-8")).decode("ascii").rstrip("=")
+    encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{encoded_header}.{encoded_payload}.signature"
 
 
 def test_symbol_mapping_cn(provider: LongbridgeQuoteProvider) -> None:
@@ -72,7 +81,10 @@ def test_env_status_present(provider: LongbridgeQuoteProvider, monkeypatch: pyte
     )
     monkeypatch.setenv("LONGBRIDGE_APP_KEY", "k")
     monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "s")
-    monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", "t")
+    monkeypatch.setenv(
+        "LONGBRIDGE_ACCESS_TOKEN",
+        _build_jwt({"exp": int((datetime.now(timezone.utc) + timedelta(days=60)).timestamp())}),
+    )
     monkeypatch.setenv("LONGBRIDGE_REGION", "hk")
 
     status = provider.check_status()
@@ -83,6 +95,7 @@ def test_env_status_present(provider: LongbridgeQuoteProvider, monkeypatch: pyte
     assert status["auth"]["auth_mode_candidate"] == "legacy_api_key"
     assert status["auth"]["oauthbuilder"] == "supported"
     assert status["optional_env"]["LONGBRIDGE_REGION"] in {"present", "missing"}
+    assert status["token_expiry"]["access_token_expiry_status"] == "ok"
 
 
 def test_fetch_quote_missing_env(provider: LongbridgeQuoteProvider, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -7,18 +7,21 @@ from pathlib import Path
 from typing import Any
 
 from app_core.path_utils import get_project_root
+from app_core.security.token_expiry import analyze_token_expiry
 
 
-SECRET_SPECS: dict[str, dict[str, str]] = {
+SECRET_SPECS: dict[str, dict[str, Any]] = {
     "MARKETAUX_API_TOKEN": {
         "provider": "Marketaux",
         "display_name": "Marketaux 新闻 API",
         "note": "国际市场新闻",
+        "supports_expiry_monitor": True,
     },
     "LONGBRIDGE_OAUTH_CLIENT_ID": {
         "provider": "Longbridge",
         "display_name": "Longbridge OAuth Client ID",
         "note": "OAuthBuilder 授权专用 Client ID，不等同于 App Key。",
+        "supports_expiry_monitor": False,
     },
     "LONGBRIDGE_APP_KEY": {
         "provider": "Longbridge",
@@ -34,6 +37,7 @@ SECRET_SPECS: dict[str, dict[str, str]] = {
         "provider": "Longbridge",
         "display_name": "Longbridge Access Token",
         "note": "只读实时行情 / OAuth 兼容",
+        "supports_expiry_monitor": True,
     },
     "LONGBRIDGE_REGION": {
         "provider": "Longbridge",
@@ -54,11 +58,13 @@ SECRET_SPECS: dict[str, dict[str, str]] = {
         "provider": "OpenAI",
         "display_name": "OpenAI API Key",
         "note": "后续 AI 研报与摘要",
+        "supports_expiry_monitor": True,
     },
     "TUSHARE_TOKEN": {
         "provider": "Tushare",
         "display_name": "Tushare Pro Token",
         "note": "预留：A股历史/财务/基础数据",
+        "supports_expiry_monitor": True,
     },
 }
 
@@ -158,7 +164,10 @@ class LocalSecretManager:
                 "updated_at": updated_at,
                 "last_checked_at": checked_at,
                 "note": str(existing_metadata.get("note") or spec["note"]),
+                "supports_expiry_monitor": bool(spec.get("supports_expiry_monitor", False)),
             }
+            if item["supports_expiry_monitor"]:
+                item.update(self._build_expiry_fields(raw_value))
             results.append(item)
 
             metadata[key] = {
@@ -174,6 +183,10 @@ class LocalSecretManager:
 
         self._write_metadata(metadata)
         return results
+
+    def get_token_expiry_statuses(self) -> list[dict[str, Any]]:
+        statuses = self.get_secret_statuses()
+        return [item for item in statuses if bool(item.get("supports_expiry_monitor"))]
 
     def set_secret(self, key: str, value: str, note: str | None = None) -> dict[str, Any]:
         normalized_key = self._validate_key(key)
@@ -248,6 +261,19 @@ class LocalSecretManager:
         if len(normalized) <= 4:
             return "****"
         return f"****{normalized[-4:]}"
+
+    def _build_expiry_fields(self, raw_value: str) -> dict[str, Any]:
+        expiry = analyze_token_expiry(str(raw_value or ""))
+        return {
+            "expires_at_utc": expiry["expires_at_utc"],
+            "issued_at_utc": expiry["issued_at_utc"],
+            "not_before_utc": expiry["not_before_utc"],
+            "days_remaining": expiry["days_remaining"],
+            "seconds_remaining": expiry["seconds_remaining"],
+            "expiry_status": expiry["status"],
+            "expiry_message": expiry["message"],
+            "manual_expires_at": expiry["manual_expires_at"],
+        }
 
     def _validate_key(self, key: str) -> str:
         normalized_key = str(key).strip()

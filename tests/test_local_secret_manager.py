@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import base64
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app_core.security.local_secret_manager import LocalSecretManager
+
+
+def _build_jwt(payload: dict[str, object]) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = base64.urlsafe_b64encode(json.dumps(header).encode("utf-8")).decode("ascii").rstrip("=")
+    encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{encoded_header}.{encoded_payload}.signature"
 
 
 def test_env_missing_does_not_crash(tmp_path: Path, monkeypatch) -> None:
@@ -30,6 +39,22 @@ def test_reads_present_and_missing_statuses(tmp_path: Path) -> None:
     assert marketaux["status"] == "configured"
     assert marketaux["source"] == ".env"
     assert openai["status"] == "empty"
+
+
+def test_longbridge_access_token_status_includes_expiry_fields(tmp_path: Path) -> None:
+    now = datetime.now(timezone.utc)
+    token = _build_jwt({"exp": int((now + timedelta(days=60)).timestamp())})
+    (tmp_path / ".env").write_text(f"LONGBRIDGE_ACCESS_TOKEN={token}\n", encoding="utf-8")
+    manager = LocalSecretManager(project_root=tmp_path)
+
+    statuses = manager.get_secret_statuses()
+    longbridge = next(item for item in statuses if item["key"] == "LONGBRIDGE_ACCESS_TOKEN")
+
+    assert longbridge["status"] == "configured"
+    assert longbridge["expiry_status"] == "ok"
+    assert longbridge["expires_at_utc"]
+    assert isinstance(longbridge["days_remaining"], int)
+    assert token not in json.dumps(longbridge, ensure_ascii=False)
 
 
 def test_masked_never_leaks_full_token(tmp_path: Path) -> None:

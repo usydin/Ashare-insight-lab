@@ -1,6 +1,23 @@
 import RefreshDataPanel from './RefreshDataPanel';
 import MarketauxConfigPanel from './MarketauxConfigPanel';
 
+const getExpiryLabel = (status) => {
+  if (status === 'ok') return '正常';
+  if (status === 'warning') return '30天内到期';
+  if (status === 'danger') return '7天内到期';
+  if (status === 'expired') return '已过期';
+  if (status === 'not_jwt') return '不可解析';
+  if (status === 'invalid') return '解析失败';
+  return '未知';
+};
+
+const getExpiryPillClass = (status) => {
+  if (status === 'ok') return 'success';
+  if (status === 'warning') return 'warning';
+  if (status === 'danger' || status === 'expired') return 'danger';
+  return 'unknown';
+};
+
 const SettingsView = ({ data }) => {
   if (!data) return (
     <div className="empty-state">
@@ -19,6 +36,7 @@ const SettingsView = ({ data }) => {
   const marketauxSource = sourceMap.marketaux || {};
   const tushareSource = sourceMap.tushare || {};
   const akshareSource = sourceMap.akshare || {};
+  const tokenExpiry = data?.token_expiry || longbridgeSource.token_expiry || {};
 
   return (
     <div id="settingsView" className="view-container active">
@@ -81,6 +99,10 @@ const SettingsView = ({ data }) => {
             <span className="meta-value">状态查看：python3 app.py longbridge-oauth-status</span>
           </div>
           <div className="meta-row">
+            <span className="meta-label">Token 到期提醒</span>
+            <span className="meta-value code">python3 app.py token-expiry-status</span>
+          </div>
+          <div className="meta-row">
             <span className="meta-label">Longbridge OAuth 指引</span>
             <span className="meta-value code">python3 app.py longbridge-oauth-help</span>
           </div>
@@ -91,6 +113,39 @@ const SettingsView = ({ data }) => {
           <div className="meta-row" style={{ border: 'none' }}>
             <span className="meta-label">Tushare</span>
             <span className="meta-value">状态查看：python3 app.py token-status</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel-section animate-in" style={{ animationDelay: '0.27s' }}>
+        <div className="section-heading">⏰ API Token 到期提醒</div>
+        <div className="state-card">
+          <div style={{ fontSize: '12px', color: 'var(--mac-text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
+            当前优先监控 Longbridge Access Token 到期时间。前端只显示脱敏后的到期信息，不显示 token 明文。
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge Access Token</span>
+            <span className="meta-value">
+              <span className={`status-pill ${getExpiryPillClass(tokenExpiry.status)}`}>{getExpiryLabel(tokenExpiry.status)}</span>
+            </span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">到期时间</span>
+            <span className="meta-value">{tokenExpiry.expires_at_utc || '-'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">剩余天数</span>
+            <span className="meta-value">{tokenExpiry.days_remaining ?? '-'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">提示</span>
+            <span className="meta-value">
+              {tokenExpiry.message || '到期前请更新 .env 中 LONGBRIDGE_ACCESS_TOKEN'}
+            </span>
+          </div>
+          <div className="meta-row" style={{ border: 'none' }}>
+            <span className="meta-label">CLI</span>
+            <span className="meta-value code">python3 app.py token-status / python3 app.py token-expiry-status</span>
           </div>
         </div>
       </section>
@@ -108,6 +163,10 @@ const SettingsView = ({ data }) => {
           <div className="meta-row">
             <span className="meta-label">Longbridge</span>
             <span className="meta-value">{longbridgeSource.status_label || '待授权'} / {longbridgeSource.auth_mode || 'oauthbuilder_required'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge Token 到期</span>
+            <span className="meta-value">{getExpiryLabel(longbridgeSource.token_expiry?.status || tokenExpiry.status)}</span>
           </div>
           <div className="meta-row">
             <span className="meta-label">Longbridge 安全边界</span>

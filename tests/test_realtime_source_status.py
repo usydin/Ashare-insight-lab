@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app_core.data_sources.realtime_source_status import build_realtime_source_status
@@ -15,6 +18,13 @@ def _mock_sdk_available() -> dict[str, Any]:
 
 def _source_map(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {item["source_id"]: item for item in summary["sources"]}
+
+
+def _build_jwt(payload: dict[str, object]) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = base64.urlsafe_b64encode(json.dumps(header).encode("utf-8")).decode("ascii").rstrip("=")
+    encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{encoded_header}.{encoded_payload}.signature"
 
 
 def test_akshare_default_available(tmp_path, monkeypatch) -> None:
@@ -55,6 +65,7 @@ def test_longbridge_without_oauth_token_is_blocked_candidate(tmp_path, monkeypat
     assert longbridge["sdk_status"] == "installed"
     assert longbridge["quote_only"] is True
     assert longbridge["trade_enabled"] is False
+    assert longbridge["token_expiry"]["status"] == "missing"
 
 
 def test_marketaux_present_is_available(tmp_path, monkeypatch) -> None:
@@ -124,6 +135,25 @@ def test_output_does_not_include_real_tokens(tmp_path, monkeypatch) -> None:
     assert "demo-marketaux-1234" not in payload
     assert "demo_oauth" not in payload
     assert "refresh_demo" not in payload
+
+
+def test_longbridge_source_includes_token_expiry_and_warning_status(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app_core.data_sources.longbridge_quote_provider.inspect_longbridge_sdk",
+        lambda: _mock_sdk_available(),
+    )
+    monkeypatch.setenv("LONGBRIDGE_APP_KEY", "demo-key")
+    monkeypatch.setenv("LONGBRIDGE_APP_SECRET", "demo-secret")
+    token = _build_jwt({"exp": int((datetime.now(timezone.utc) + timedelta(days=5)).timestamp())})
+    monkeypatch.setenv("LONGBRIDGE_ACCESS_TOKEN", token)
+
+    summary = build_realtime_source_status(project_root=tmp_path)
+    longbridge = _source_map(summary)["longbridge"]
+
+    assert summary["token_expiry"]["provider"] == "longbridge"
+    assert longbridge["token_expiry"]["status"] == "danger"
+    assert longbridge["status"] == "warning"
+    assert longbridge["status_label"] == "临近到期"
 
 
 def test_safety_trade_enabled_is_false(tmp_path, monkeypatch) -> None:

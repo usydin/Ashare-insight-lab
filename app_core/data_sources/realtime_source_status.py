@@ -20,6 +20,7 @@ def build_realtime_source_status(project_root: Path | None = None) -> dict[str, 
     marketaux_secret = secret_statuses.get("MARKETAUX_API_TOKEN", {})
     tushare_secret = secret_statuses.get("TUSHARE_TOKEN", {})
     longbridge_entry = _build_longbridge_source(longbridge_status)
+    token_expiry_summary = longbridge_entry.get("token_expiry", {})
     marketaux_token_status = _normalize_secret_status(marketaux_secret.get("status", "missing"))
     tushare_token_status = _normalize_secret_status(tushare_secret.get("status", "missing"))
 
@@ -28,6 +29,7 @@ def build_realtime_source_status(project_root: Path | None = None) -> dict[str, 
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "default_quote_source": "akshare",
+        "token_expiry": token_expiry_summary,
         "sources": [
             {
                 "source_id": "akshare",
@@ -86,6 +88,7 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
     sdk_status = "installed" if bool(longbridge_status.get("sdk_importable")) else "missing"
     auth_mode = _map_longbridge_auth_mode(raw_auth_mode)
     token_status = _map_longbridge_token_status(raw_auth_mode, raw_oauth_status)
+    token_expiry = _normalize_longbridge_token_expiry(longbridge_status.get("token_expiry", {}))
 
     if raw_auth_mode in {"legacy_api_key", "oauth2_local_token"}:
         status = "available"
@@ -93,6 +96,15 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
     else:
         status = "blocked"
         status_label = "待授权"
+
+    if raw_auth_mode == "legacy_api_key":
+        expiry_status = token_expiry["status"]
+        if expiry_status == "expired":
+            status = "blocked"
+            status_label = "Token 已过期"
+        elif expiry_status in {"danger", "warning"}:
+            status = "warning"
+            status_label = "临近到期"
 
     if raw_auth_mode == "oauth2_local_token" and raw_oauth_status == "configured":
         note = "Longbridge OAuth 已授权，可读取只读行情；token 由 SDK 托管或本地可用"
@@ -107,6 +119,11 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
     else:
         note = "OAuth 授权当前受 internal_server_error 阻塞，待 Longbridge 配置确认"
 
+    if raw_auth_mode == "legacy_api_key" and token_expiry["status"] == "expired":
+        note = "Longbridge Access Token 已过期，请更新 .env 中 LONGBRIDGE_ACCESS_TOKEN"
+    elif raw_auth_mode == "legacy_api_key" and token_expiry["status"] in {"danger", "warning"}:
+        note = "Longbridge Access Token 临近到期，请提前更新 .env 中 LONGBRIDGE_ACCESS_TOKEN"
+
     return {
         "source_id": "longbridge",
         "display_name": "Longbridge OpenAPI 只读行情",
@@ -119,6 +136,7 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
         "token_status": token_status,
         "sdk_status": sdk_status,
         "auth_mode": auth_mode,
+        "token_expiry": token_expiry,
         "quote_only": True,
         "trade_enabled": False,
         "note": note,
@@ -149,3 +167,17 @@ def _map_longbridge_token_status(raw_auth_mode: str, raw_oauth_status: str) -> s
     if raw_oauth_status == "unknown_expiry":
         return "configured"
     return "missing"
+
+
+def _normalize_longbridge_token_expiry(raw_expiry: Any) -> dict[str, Any]:
+    expiry = raw_expiry if isinstance(raw_expiry, dict) else {}
+    return {
+        "provider": "longbridge",
+        "key": "LONGBRIDGE_ACCESS_TOKEN",
+        "status": str(expiry.get("access_token_expiry_status") or "missing"),
+        "expires_at_utc": str(expiry.get("expires_at_utc") or ""),
+        "days_remaining": expiry.get("days_remaining"),
+        "message": str(expiry.get("message") or ""),
+        "quote_only": True,
+        "trade_enabled": False,
+    }

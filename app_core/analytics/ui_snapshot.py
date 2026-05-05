@@ -30,6 +30,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
     changes = build_signal_change_summary(database_path=database_path)
     source_status = build_realtime_source_status()
     realtime_quotes = load_longbridge_realtime_quote_snapshot()
+    token_expiry = source_status.get("token_expiry", {})
     
     latest_run = dashboard.get("latest_run")
     messages = []
@@ -71,6 +72,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
             "default_quote_source": source_status["default_quote_source"],
             "sources": source_status["sources"],
         },
+        "token_expiry": token_expiry,
         "realtime_quotes": realtime_quotes,
         "review_queue": {
             "count": queue_count,
