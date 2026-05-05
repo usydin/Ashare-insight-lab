@@ -15,11 +15,13 @@ def test_validate_ui_snapshot_valid():
         "latest_run": {"id": 1, "run_date": "2026-01-01", "status": "success"},
         "dashboard_summary": {},
         "source_status": {"default_quote_source": "akshare", "sources": []},
+        "realtime_quotes": {"provider": "longbridge", "quote_only": True, "trade_enabled": False, "items": []},
         "review_queue": {"count": 0, "high_count": 0, "medium_count": 0, "low_count": 0, "items": []},
         "signal_changes": {"latest_run_id": 1, "previous_run_id": None, "summary": {}, "top_changes": []},
         "data_health": {"ok_count": 0},
         "paths": {
             "database": "db", "daily_report": "rep", "dashboard_summary_json": "j1",
+            "longbridge_quote_snapshot_json": "longbridge_quote_snapshot.json",
             "review_queue_json": "j2", "review_queue_csv": "c1", "signal_changes_csv": "c2",
             "ui_snapshot_json": "j3"
         },
@@ -49,7 +51,7 @@ def test_validate_ui_snapshot_invalid_types():
         "messages": "not_a_list"
     }
     # 先补齐 root 必须字段以免第一阶段校验直接返回
-    required = ["app", "generated_at", "latest_run", "dashboard_summary", "source_status", "review_queue", "signal_changes", "data_health", "paths", "messages"]
+    required = ["app", "generated_at", "latest_run", "dashboard_summary", "source_status", "realtime_quotes", "review_queue", "signal_changes", "data_health", "paths", "messages"]
     for r in required:
         if r not in snapshot: snapshot[r] = {}
         
@@ -65,11 +67,13 @@ def test_validate_ui_snapshot_latest_run_none():
         "latest_run": None,
         "dashboard_summary": {},
         "source_status": {"default_quote_source": "akshare", "sources": []},
+        "realtime_quotes": {"provider": "longbridge", "quote_only": True, "trade_enabled": False, "items": []},
         "review_queue": {"count":0, "high_count":0, "medium_count":0, "low_count":0, "items": []},
         "signal_changes": {"latest_run_id": None, "previous_run_id": None, "summary": {}, "top_changes": []},
         "data_health": {"ok_count": 0},
         "paths": {
             "database": "t", "daily_report": "t", "dashboard_summary_json": "t",
+            "longbridge_quote_snapshot_json": "longbridge_quote_snapshot.json",
             "review_queue_json": "t", "review_queue_csv": "t", "signal_changes_csv": "t",
             "ui_snapshot_json": "t"
         },

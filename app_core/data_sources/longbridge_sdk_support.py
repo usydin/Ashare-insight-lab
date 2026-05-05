@@ -48,6 +48,8 @@ def start_longbridge_oauth(
     *,
     client_id: str,
     store: LongbridgeOAuthStore,
+    open_browser: bool = True,
+    verbose: bool = True,
 ) -> dict[str, Any]:
     sdk_status = inspect_longbridge_sdk()
     if not sdk_status["sdk_importable"]:
@@ -82,19 +84,23 @@ def start_longbridge_oauth(
         nonlocal browser_open_requested
         authorization_urls.append(str(url))
         _, redirect_uri_host = _extract_redirect_uri_summary(str(url))
-        try:
-            browser_open_requested = bool(webbrowser.open(str(url)))
-        except Exception:  # pragma: no cover - depends on desktop/browser runtime
+        if open_browser:
+            try:
+                browser_open_requested = bool(webbrowser.open(str(url)))
+            except Exception:  # pragma: no cover - depends on desktop/browser runtime
+                browser_open_requested = False
+        else:
             browser_open_requested = False
 
-        print("provider: longbridge")
-        print("oauth: waiting_for_browser_authorization")
-        print(f"browser_open_requested: {str(bool(browser_open_requested)).lower()}")
-        print(f"redirect_uri_host: {redirect_uri_host}")
-        print("quote_only: true")
-        print("trade_enabled: false")
-        if not browser_open_requested:
-            print("message: 请检查系统默认浏览器，或临时启用 debug 模式获取脱敏排查信息。")
+        if verbose:
+            print("provider: longbridge")
+            print("oauth: waiting_for_browser_authorization")
+            print(f"browser_open_requested: {str(bool(browser_open_requested)).lower()}")
+            print(f"redirect_uri_host: {redirect_uri_host}")
+            print("quote_only: true")
+            print("trade_enabled: false")
+            if open_browser and not browser_open_requested:
+                print("message: 请检查系统默认浏览器，或临时启用 debug 模式获取脱敏排查信息。")
 
     def _build_failure_result(message: str, status: str = "oauth_failed") -> dict[str, Any]:
         diagnostics = build_oauth_failure_diagnostics(
@@ -142,6 +148,51 @@ def start_longbridge_oauth(
     }
 
 
+def build_longbridge_quote_context_via_oauth(
+    *,
+    client_id: str,
+    store: LongbridgeOAuthStore,
+) -> dict[str, Any]:
+    start_result = start_longbridge_oauth(
+        client_id=client_id,
+        store=store,
+        open_browser=False,
+        verbose=False,
+    )
+    if start_result["status"] != "authorized":
+        return {
+            "status": start_result["status"],
+            "message": start_result.get("message", ""),
+            "authorization_url": start_result.get("authorization_url", ""),
+        }
+
+    sdk_status = inspect_longbridge_sdk()
+    openapi_module = sdk_status["openapi_module"]
+    if openapi_module is None:
+        return {
+            "status": "sdk_missing",
+            "message": sdk_status["error_message"] or "Longbridge SDK missing",
+            "authorization_url": start_result.get("authorization_url", ""),
+        }
+
+    try:
+        config = openapi_module.Config.from_oauth(start_result["oauth"])
+        ctx = openapi_module.QuoteContext(config)
+    except Exception as error:  # pragma: no cover - runtime branch
+        return {
+            "status": "quote_failed",
+            "message": _sanitize_error(str(error) or "QuoteContext initialization failed"),
+            "authorization_url": start_result.get("authorization_url", ""),
+        }
+
+    return {
+        "status": "authorized",
+        "message": "",
+        "authorization_url": start_result.get("authorization_url", ""),
+        "ctx": ctx,
+    }
+
+
 def build_oauth_failure_diagnostics(
     *,
     message: str,
@@ -184,30 +235,33 @@ def fetch_longbridge_quote_via_oauth(
     raw_symbol: str,
     store: LongbridgeOAuthStore,
 ) -> dict[str, Any]:
-    start_result = start_longbridge_oauth(client_id=client_id, store=store)
-    if start_result["status"] != "authorized":
+    context_result = build_longbridge_quote_context_via_oauth(client_id=client_id, store=store)
+    if context_result["status"] != "authorized":
         return {
-            "data_status": start_result["status"],
-            "error_message": start_result["message"],
-            "authorization_url": start_result.get("authorization_url", ""),
+            "data_status": context_result["status"],
+            "message": context_result.get("message", ""),
+            "error_message": context_result.get("message", ""),
+            "authorization_url": context_result.get("authorization_url", ""),
             "symbol": symbol,
             "raw_symbol": raw_symbol,
         }
 
-    sdk_status = inspect_longbridge_sdk()
-    openapi_module = sdk_status["openapi_module"]
-    if openapi_module is None:
-        return {
-            "data_status": "sdk_missing",
-            "error_message": sdk_status["error_message"] or "Longbridge SDK missing",
-            "authorization_url": start_result.get("authorization_url", ""),
-            "symbol": symbol,
-            "raw_symbol": raw_symbol,
-        }
+    return fetch_longbridge_quote_with_context(
+        ctx=context_result["ctx"],
+        symbol=symbol,
+        raw_symbol=raw_symbol,
+        authorization_url=context_result.get("authorization_url", ""),
+    )
 
+
+def fetch_longbridge_quote_with_context(
+    *,
+    ctx: Any,
+    symbol: str,
+    raw_symbol: str,
+    authorization_url: str = "",
+) -> dict[str, Any]:
     try:
-        config = openapi_module.Config.from_oauth(start_result["oauth"])
-        ctx = openapi_module.QuoteContext(config)
         resp = ctx.quote([raw_symbol])
     except Exception as error:  # pragma: no cover - runtime branch
         safe_message = _sanitize_error(str(error) or "QuoteContext quote failed")
@@ -220,7 +274,7 @@ def fetch_longbridge_quote_via_oauth(
                 else ""
             ),
             "error_message": "" if error_status == "permission_required" else safe_message,
-            "authorization_url": start_result.get("authorization_url", ""),
+            "authorization_url": authorization_url,
             "symbol": symbol,
             "raw_symbol": raw_symbol,
         }
@@ -230,21 +284,24 @@ def fetch_longbridge_quote_via_oauth(
         return {
             "data_status": "quote_failed",
             "error_message": "QuoteContext 返回空结果。",
-            "authorization_url": start_result.get("authorization_url", ""),
+            "authorization_url": authorization_url,
             "symbol": symbol,
             "raw_symbol": raw_symbol,
         }
 
     return {
         "data_status": "ok",
+        "message": "",
         "error_message": "",
-        "authorization_url": start_result.get("authorization_url", ""),
+        "authorization_url": authorization_url,
         "symbol": symbol,
         "raw_symbol": raw_symbol,
         "name": normalized.get("name", ""),
         "current_price": normalized.get("current_price"),
         "change": normalized.get("change"),
         "change_percent": normalized.get("change_percent"),
+        "volume": normalized.get("volume"),
+        "turnover": normalized.get("turnover"),
         "timestamp": normalized.get("timestamp") or datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -279,6 +336,8 @@ def _normalize_quote_response(resp: Any) -> dict[str, Any] | None:
         "current_price": _get(first, "current_price", "last_done", "price"),
         "change": _get(first, "change"),
         "change_percent": _get(first, "change_percent"),
+        "volume": _get(first, "volume"),
+        "turnover": _get(first, "turnover", "amount"),
         "timestamp": _get(first, "timestamp", "updated_at"),
     }
 

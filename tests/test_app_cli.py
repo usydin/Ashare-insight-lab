@@ -702,7 +702,12 @@ def test_main_longbridge_status_auto_loads_env(monkeypatch, capsys, tmp_path) ->
                     assert result == 0
                     assert "LONGBRIDGE_APP_KEY: present" in captured.out
                     assert "LONGBRIDGE_APP_SECRET: present" in captured.out
-                    assert "auth_mode_candidate: oauth_client_registration_required" in captured.out
+                    assert "client_id: missing" in captured.out
+                    assert "oauth_client:" in captured.out
+                    assert "quote_only: true" in captured.out
+                    assert "trade_enabled: false" in captured.out
+                    assert "auto-key-1111" not in captured.out
+                    assert "auto-secret-2222" not in captured.out
 
 
 def test_main_longbridge_oauth_help(monkeypatch, capsys) -> None:
@@ -1182,3 +1187,32 @@ def test_main_source_status_does_not_output_real_token(monkeypatch, capsys) -> N
     assert result == 0
     assert "demo-secret-token-1234" not in captured.out
     assert "demo-oauth-secret-9876" not in captured.out
+
+def test_main_longbridge_quote_snapshot_success(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote-snapshot"])
+    
+    mock_snapshot = {
+        "status": "ok",
+        "items": [{"symbol": "600519", "data_status": "ok"}]
+    }
+    
+    with patch("app.build_longbridge_realtime_quote_snapshot", return_value=mock_snapshot),          patch("app.write_longbridge_realtime_quote_snapshot_json", return_value=tmp_path / "snapshot.json"),          patch("app.get_project_root", return_value=tmp_path):
+        
+        result = app.main()
+        captured = capsys.readouterr()
+        
+        assert result == 0
+        assert "snapshot_status: ok" in captured.out
+        assert "ok_items: 1" in captured.out
+        assert "quote_only: true" in captured.out
+
+def test_main_longbridge_quote_snapshot_failed(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote-snapshot"])
+    
+    with patch("app.build_longbridge_realtime_quote_snapshot", side_effect=RuntimeError("Test error")):
+        result = app.main()
+        captured = capsys.readouterr()
+        
+        assert result == 1
+        assert "snapshot_status: failed" in captured.out
+        assert "message: Test error" in captured.out

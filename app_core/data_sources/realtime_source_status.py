@@ -94,8 +94,10 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
         status = "blocked"
         status_label = "待授权"
 
-    if raw_auth_mode == "oauth2_local_token":
-        note = "本地 OAuth token 已配置，后续可切换为候选只读行情源"
+    if raw_auth_mode == "oauth2_local_token" and raw_oauth_status == "configured":
+        note = "Longbridge OAuth 已授权，可读取只读行情；token 由 SDK 托管或本地可用"
+    elif raw_auth_mode == "oauth2_local_token":
+        note = "Longbridge OAuth 已授权，可读取只读行情；当前采用 SDK 托管 token cache"
     elif raw_auth_mode == "legacy_api_key":
         note = "已检测到 legacy 只读行情凭证，可作为候选行情源"
     elif sdk_status == "missing":
@@ -125,7 +127,7 @@ def _build_longbridge_source(longbridge_status: dict[str, Any]) -> dict[str, Any
 
 def _map_longbridge_auth_mode(raw_auth_mode: str) -> str:
     if raw_auth_mode == "oauth2_local_token":
-        return "oauth_configured"
+        return "已授权 / 可读取只读行情"
     if raw_auth_mode == "legacy_api_key":
         return "legacy_configured"
     if raw_auth_mode in {"oauthbuilder_required", "oauth_required"}:

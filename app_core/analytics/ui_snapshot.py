@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app_core.analytics.dashboard_summary import build_dashboard_summary
+from app_core.analytics.realtime_quote_snapshot import load_longbridge_realtime_quote_snapshot
 from app_core.analytics.review_queue import build_review_queue
 from app_core.analytics.history_summary import build_signal_change_summary
 from app_core.data_sources.realtime_source_status import build_realtime_source_status
@@ -28,6 +29,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
     queue = build_review_queue(database_path)
     changes = build_signal_change_summary(database_path=database_path)
     source_status = build_realtime_source_status()
+    realtime_quotes = load_longbridge_realtime_quote_snapshot()
     
     latest_run = dashboard.get("latest_run")
     messages = []
@@ -45,6 +47,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
         "database": "data/history/ashare_insight_lab.sqlite3",
         "daily_report": latest_run["report_path"] if latest_run else "",
         "dashboard_summary_json": "data/processed/dashboard_summary.json",
+        "longbridge_quote_snapshot_json": "data/processed/longbridge_quote_snapshot.json",
         "review_queue_json": "data/processed/review_queue.json",
         "review_queue_csv": "data/processed/review_queue.csv",
         "signal_changes_csv": "data/processed/signal_changes.csv",
@@ -68,6 +71,7 @@ def build_ui_snapshot(database_path: str | Path | None = None) -> dict[str, Any]
             "default_quote_source": source_status["default_quote_source"],
             "sources": source_status["sources"],
         },
+        "realtime_quotes": realtime_quotes,
         "review_queue": {
             "count": queue_count,
             "high_count": high_count,

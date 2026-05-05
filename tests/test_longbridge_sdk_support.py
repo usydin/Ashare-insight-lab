@@ -204,7 +204,7 @@ def test_fetch_longbridge_quote_via_oauth_sdk_missing(tmp_path, monkeypatch) -> 
     store = LongbridgeOAuthStore(project_root=tmp_path)
     monkeypatch.setattr(
         "app_core.data_sources.longbridge_sdk_support.start_longbridge_oauth",
-        lambda client_id, store: {
+        lambda client_id, store, open_browser=True, verbose=True: {
             "status": "sdk_missing",
             "message": "sdk missing",
             "authorization_url": "",
@@ -251,7 +251,7 @@ def test_fetch_longbridge_quote_via_oauth_success(tmp_path, monkeypatch) -> None
     store = LongbridgeOAuthStore(project_root=tmp_path)
     monkeypatch.setattr(
         "app_core.data_sources.longbridge_sdk_support.start_longbridge_oauth",
-        lambda client_id, store: {
+        lambda client_id, store, open_browser=True, verbose=True: {
             "status": "authorized",
             "message": "",
             "authorization_url": "https://example.com/oauth",
@@ -303,7 +303,7 @@ def test_fetch_longbridge_quote_via_oauth_permission_required(tmp_path, monkeypa
     store = LongbridgeOAuthStore(project_root=tmp_path)
     monkeypatch.setattr(
         "app_core.data_sources.longbridge_sdk_support.start_longbridge_oauth",
-        lambda client_id, store: {
+        lambda client_id, store, open_browser=True, verbose=True: {
             "status": "authorized",
             "message": "",
             "authorization_url": "",

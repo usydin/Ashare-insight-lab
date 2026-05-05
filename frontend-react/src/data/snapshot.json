@@ -7,7 +7,7 @@
     "developer": "pL",
     "copyright": "Copyright © 2026 @B‘lock10STUdio. All rights reserved."
   },
-  "generated_at": "2026-05-05T17:00:00",
+  "generated_at": "2026-05-05T21:20:42",
   "latest_run": {
     "id": 15,
     "run_date": "2026-05-04",
@@ -248,8 +248,8 @@
         "source_id": "longbridge",
         "display_name": "Longbridge OpenAPI 只读行情",
         "category": "quote",
-        "status": "blocked",
-        "status_label": "待授权",
+        "status": "available",
+        "status_label": "候选可用",
         "priority": "candidate",
         "supports": [
           "CN_quote",
@@ -257,12 +257,12 @@
           "HK_quote"
         ],
         "requires_token": true,
-        "token_status": "missing",
+        "token_status": "configured",
         "sdk_status": "installed",
-        "auth_mode": "oauthbuilder_required",
+        "auth_mode": "legacy_configured",
         "quote_only": true,
         "trade_enabled": false,
-        "note": "OAuth 授权当前受 internal_server_error 阻塞，待 Longbridge 配置确认"
+        "note": "已检测到 legacy 只读行情凭证，可作为候选行情源"
       },
       {
         "source_id": "marketaux",
@@ -287,6 +287,15 @@
         "note": "预留用于 A股历史、财务与基础数据"
       }
     ]
+  },
+  "realtime_quotes": {
+    "provider": "longbridge",
+    "generated_at": "",
+    "status": "missing",
+    "message": "",
+    "quote_only": true,
+    "trade_enabled": false,
+    "items": []
   },
   "review_queue": {
     "count": 4,
@@ -386,6 +395,7 @@
     "database": "data/history/ashare_insight_lab.sqlite3",
     "daily_report": "reports/daily/2026-05-04_daily_report.md",
     "dashboard_summary_json": "data/processed/dashboard_summary.json",
+    "longbridge_quote_snapshot_json": "data/processed/longbridge_quote_snapshot.json",
     "review_queue_json": "data/processed/review_queue.json",
     "review_queue_csv": "data/processed/review_queue.csv",
     "signal_changes_csv": "data/processed/signal_changes.csv",

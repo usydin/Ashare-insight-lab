@@ -15,6 +15,10 @@ from app_core.analytics.dashboard_summary import (
     build_dashboard_summary,
     write_dashboard_summary_json,
 )
+from app_core.analytics.realtime_quote_snapshot import (
+    build_longbridge_realtime_quote_snapshot,
+    write_longbridge_realtime_quote_snapshot_json,
+)
 from app_core.analytics.review_queue import build_review_queue, write_review_queue_outputs
 from app_core.analytics.ui_snapshot import build_ui_snapshot, write_ui_snapshot_json
 from app_core.analytics.ui_snapshot_schema import (
@@ -305,6 +309,12 @@ def run_ui_snapshot() -> int:
         
         changes = snapshot["signal_changes"]["summary"]
         print(f"信号变化: 板块 {changes['sector_change_count']} / 自选股 {changes['stock_change_count']} / 指数 {changes['index_change_count']}")
+
+        realtime_quotes = snapshot.get("realtime_quotes", {})
+        quote_items = realtime_quotes.get("items", [])
+        ok_count = sum(1 for item in quote_items if item.get("data_status") == "ok")
+        if quote_items:
+            print(f"Longbridge 行情快照: {ok_count}/{len(quote_items)} 可用")
         
         json_path = write_ui_snapshot_json()
         print(f"快照文件: {json_path.relative_to(get_project_root())}")
@@ -410,6 +420,37 @@ def run_sync_frontend_snapshot() -> int:
         return 0
     except Exception as e:
         print(f"同步失败: {e}")
+        return 1
+
+
+def run_longbridge_quote_snapshot() -> int:
+    """生成 Longbridge 前端可读实时行情快照。"""
+    try:
+        snapshot = build_longbridge_realtime_quote_snapshot()
+        output_path = write_longbridge_realtime_quote_snapshot_json()
+        items = snapshot.get("items", [])
+        ok_count = sum(1 for item in items if item.get("data_status") == "ok")
+        permission_required_count = sum(
+            1 for item in items if item.get("data_status") == "permission_required"
+        )
+
+        print("provider: longbridge")
+        print(f"snapshot_status: {snapshot.get('status', 'unknown')}")
+        print(f"items: {len(items)}")
+        print(f"ok_items: {ok_count}")
+        print(f"permission_required_items: {permission_required_count}")
+        print(f"output: {output_path.relative_to(get_project_root())}")
+        print("quote_only: true")
+        print("trade_enabled: false")
+        if snapshot.get("message"):
+            print(f"message: {snapshot['message']}")
+        return 0
+    except Exception as error:
+        print("provider: longbridge")
+        print("snapshot_status: failed")
+        print("quote_only: true")
+        print("trade_enabled: false")
+        print(f"message: {str(error)}")
         return 1
 
 
@@ -1657,6 +1698,9 @@ def main() -> int:
     if sys.argv[1] == "longbridge-oauth-quote":
         return run_longbridge_oauth_quote(sys.argv[2:])
 
+    if sys.argv[1] == "longbridge-quote-snapshot":
+        return run_longbridge_quote_snapshot()
+
     if sys.argv[1] == "longbridge-quote":
         return run_longbridge_quote_cli(sys.argv[2:])
 
@@ -1700,6 +1744,7 @@ def main() -> int:
     print("python app.py longbridge-oauth-clear")
     print("python app.py longbridge-oauth-start")
     print("python app.py longbridge-oauth-quote --symbol 600519 --market CN")
+    print("python app.py longbridge-quote-snapshot")
     print("python app.py longbridge-quote --symbol 600519 --market CN")
     print("python app.py source-status")
     print("python app.py token-status")

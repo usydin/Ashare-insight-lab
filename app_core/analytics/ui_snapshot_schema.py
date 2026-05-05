@@ -12,7 +12,7 @@ def get_ui_snapshot_required_schema() -> dict[str, Any]:
     return {
         "root": [
             "app", "generated_at", "latest_run", "dashboard_summary",
-            "source_status", "review_queue", "signal_changes", "data_health", "paths", "messages"
+            "source_status", "realtime_quotes", "review_queue", "signal_changes", "data_health", "paths", "messages"
         ],
         "app": [
             "name_cn", "name_en", "version", "stage", "developer", "copyright"
@@ -20,8 +20,11 @@ def get_ui_snapshot_required_schema() -> dict[str, Any]:
         "source_status": [
             "default_quote_source", "sources"
         ],
+        "realtime_quotes": [
+            "provider", "quote_only", "trade_enabled", "items"
+        ],
         "paths": [
-            "database", "daily_report", "dashboard_summary_json",
+            "database", "daily_report", "dashboard_summary_json", "longbridge_quote_snapshot_json",
             "review_queue_json", "review_queue_csv", "signal_changes_csv",
             "ui_snapshot_json"
         ],
@@ -82,7 +85,18 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(source_status.get("sources"), list):
             _add_error(result, "Field 'source_status.sources' must be a list")
 
-    # 4. paths 节点校验
+    # 4. realtime_quotes 节点校验
+    realtime_quotes = snapshot.get("realtime_quotes", {})
+    if not isinstance(realtime_quotes, dict):
+        _add_error(result, "Field 'realtime_quotes' must be a dictionary")
+    else:
+        for field in schema["realtime_quotes"]:
+            if field not in realtime_quotes:
+                _add_error(result, f"Missing required 'realtime_quotes' field: '{field}'")
+        if not isinstance(realtime_quotes.get("items"), list):
+            _add_error(result, "Field 'realtime_quotes.items' must be a list")
+
+    # 5. paths 节点校验
     paths = snapshot.get("paths", {})
     if not isinstance(paths, dict):
         _add_error(result, "Field 'paths' must be a dictionary")
@@ -93,7 +107,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not paths.get("ui_snapshot_json"):
             _add_error(result, "Field 'paths.ui_snapshot_json' must be a non-empty string")
 
-    # 5. review_queue 节点校验
+    # 6. review_queue 节点校验
     review_queue = snapshot.get("review_queue", {})
     if not isinstance(review_queue, dict):
         _add_error(result, "Field 'review_queue' must be a dictionary")
@@ -104,11 +118,11 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(review_queue.get("items"), list):
             _add_error(result, "Field 'review_queue.items' must be a list")
 
-    # 6. messages 校验
+    # 7. messages 校验
     if not isinstance(snapshot.get("messages"), list):
         _add_error(result, "Field 'messages' must be a list")
 
-    # 7. latest_run 校验
+    # 8. latest_run 校验
     latest_run = snapshot.get("latest_run")
     if latest_run is not None:
         if not isinstance(latest_run, dict):
@@ -118,7 +132,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
                 if field not in latest_run:
                     _add_error(result, f"Field 'latest_run' missing required property: '{field}'")
 
-    # 8. data_health 校验
+    # 9. data_health 校验
     data_health = snapshot.get("data_health", {})
     if not isinstance(data_health, dict):
         _add_warning(result, "Field 'data_health' should be a dictionary")
@@ -126,7 +140,7 @@ def validate_ui_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if "risk_item_count" not in data_health and "ok_count" not in data_health:
             _add_warning(result, "Field 'data_health' should contain 'risk_item_count' or 'ok_count'")
 
-    # 9. signal_changes 校验
+    # 10. signal_changes 校验
     signal_changes = snapshot.get("signal_changes", {})
     if not isinstance(signal_changes, dict):
         _add_error(result, "Field 'signal_changes' must be a dictionary")
@@ -205,6 +219,33 @@ def write_sample_ui_snapshot(
                 }
             ]
         },
+        "realtime_quotes": {
+            "provider": "longbridge",
+            "generated_at": "2026-05-05T17:05:00",
+            "status": "partial_ok",
+            "message": "",
+            "quote_only": True,
+            "trade_enabled": False,
+            "items": [
+                {
+                    "symbol": "600519",
+                    "market": "CN",
+                    "longbridge_symbol": "600519.SH",
+                    "name": "贵州茅台",
+                    "price": 1384.79,
+                    "change": -5.21,
+                    "change_percent": -0.37,
+                    "volume": 12000,
+                    "turnover": 19800000.0,
+                    "quote_time": "2026-05-05T15:00:00",
+                    "data_status": "ok",
+                    "provider": "longbridge",
+                    "quote_only": True,
+                    "trade_enabled": False,
+                    "message": "A股行情时间可能为最近交易日数据，请结合 quote_time 判断。"
+                }
+            ]
+        },
         "review_queue": {
             "count": 1,
             "high_count": 1,
@@ -244,6 +285,7 @@ def write_sample_ui_snapshot(
             "database": "data/history/ashare_insight_lab.sqlite3",
             "daily_report": "reports/daily/2026-05-03_daily_report.md",
             "dashboard_summary_json": "data/processed/dashboard_summary.json",
+            "longbridge_quote_snapshot_json": "data/processed/longbridge_quote_snapshot.json",
             "review_queue_json": "data/processed/review_queue.json",
             "review_queue_csv": "data/processed/review_queue.csv",
             "signal_changes_csv": "data/processed/signal_changes.csv",
