@@ -49,6 +49,65 @@ const SettingsView = ({ data }) => {
         <MarketauxConfigPanel />
       </section>
 
+      <section className="panel-section animate-in" style={{ animationDelay: '0.25s' }}>
+        <div className="section-heading">🔌 长桥 OpenAPI 只读行情（候选源）</div>
+        <div className="state-card">
+          <div className="meta-row">
+            <span className="meta-label">当前接入</span>
+            <span className="meta-value">只读行情原型，CLI 可用</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">默认数据源</span>
+            <span className="meta-value">AkShare</span>
+          </div>
+          <div className="meta-row" style={{ border: 'none' }}>
+            <span className="meta-label">候选数据源</span>
+            <span className="meta-value">Longbridge（后续评估实时推送与批量刷新）</span>
+          </div>
+          <div className="meta-row" style={{ marginTop: '8px' }}>
+            <span className="meta-label">CLI 检测</span>
+            <span className="meta-value code">python3 app.py longbridge-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">示例查询</span>
+            <span className="meta-value code">python3 app.py longbridge-quote --symbol 600519 --market CN</span>
+          </div>
+          <div className="meta-row" style={{ border: 'none' }}>
+            <span className="meta-label">安全提示</span>
+            <span className="meta-value" style={{ fontSize: '11px' }}>不读取/不保存/不显示 token；环境变量仅用于命令行检测。</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel-section animate-in" style={{ animationDelay: '0.28s' }}>
+        <div className="section-heading">🔐 本地 API Token 状态</div>
+        <div className="state-card">
+          <div style={{ fontSize: '12px', color: 'var(--mac-text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
+            本页面仅显示本机 API 凭证的脱敏状态，不展示完整 Token。真实 Token 保存在本机 `.env` 或 `.secrets` 中，不会进入 Git。
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Marketaux 新闻 API</span>
+            <span className="meta-value">状态查看：python3 app.py token-status</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">替换 Marketaux Token</span>
+            <span className="meta-value code">python3 app.py token-set --key MARKETAUX_API_TOKEN</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge 行情 API</span>
+            <span className="meta-value">App Key / Secret / Access Token 仅显示 configured/missing</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">OpenAI API</span>
+            <span className="meta-value">用于后续 AI 摘要、研报与投研助手</span>
+          </div>
+          <div className="meta-row" style={{ border: 'none' }}>
+            <span className="meta-label">Tushare Pro</span>
+            <span className="meta-value">预留：A股历史数据、财务数据、基础数据</span>
+          </div>
+        </div>
+      </section>
+
       <section className="panel-section animate-in" style={{ animationDelay: '0.3s' }}>
         <div className="section-heading">🖼️ 品牌资产预览 (Local Brand Assets)</div>
         <div className="state-card">

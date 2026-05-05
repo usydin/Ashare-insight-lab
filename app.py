@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import json
 import os
+from getpass import getpass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ from app_core.data_sources.akshare_provider import (
 )
 from app_core.data_sources.international_news import get_international_news_fetcher
 from app_core.data_sources.kline_provider import AkShareKlineProvider
+from app_core.data_sources.longbridge_quote_provider import LongbridgeQuoteProvider
 from app_core.data_sources.realtime_quote_provider import AkShareRealtimeQuoteProvider
 from app_core.data_sources.manager import DataSourceManager
 from app_core.data_sources.index_provider import fetch_index_daily_history
@@ -55,6 +57,7 @@ from app_core.project_info import (
     STAGE,
     VERSION,
 )
+from app_core.security.local_secret_manager import LocalSecretManager
 from app_core.reports.daily_report import write_daily_report
 from app_core.storage.file_store import ensure_directory, save_dataframe_csv
 from app_core.storage.sqlite_store import (
@@ -416,6 +419,9 @@ def run_international_news_cli(argv: list[str]) -> int:
         return 1
 
     fetcher = get_international_news_fetcher()
+    # 自动加载本地环境变量
+    LocalSecretManager.load_local_env_to_process_env()
+
     if not fetcher.is_configured():
         print("未配置 MARKETAUX_API_TOKEN，请先在终端设置环境变量。")
         return 1
@@ -448,6 +454,9 @@ def run_international_news_cli(argv: list[str]) -> int:
 
 def run_marketaux_status() -> int:
     """安全检查 Marketaux token 是否已配置，不访问外部 API。"""
+    # 自动加载本地环境变量
+    LocalSecretManager.load_local_env_to_process_env()
+
     raw_token = os.getenv("MARKETAUX_API_TOKEN", "").strip()
     if not raw_token:
         print("Marketaux 配置状态: 未配置")
@@ -610,6 +619,142 @@ def run_kline_cli(argv: list[str]) -> int:
     print("错误: 抓取 K线数据失败。")
     if result.get("error_message"):
         print(f"详情: {result['error_message']}")
+    return 0
+
+
+def run_longbridge_status() -> int:
+    # 自动加载本地环境变量
+    LocalSecretManager.load_local_env_to_process_env()
+    
+    provider = LongbridgeQuoteProvider()
+    status = provider.check_status()
+
+    print("provider: longbridge")
+    print(f"sdk_importable: {'yes' if status['sdk_importable'] else 'no'}")
+    print("env:")
+    for key, value in status["env"].items():
+        print(f"- {key}: {value}")
+    print("optional_env:")
+    for key, value in status["optional_env"].items():
+        print(f"- {key}: {value}")
+    return 0
+
+
+def run_longbridge_quote_cli(argv: list[str]) -> int:
+    try:
+        symbol = _get_cli_option(argv, "--symbol", required=True)
+        market = _get_cli_option(argv, "--market", default="CN")
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py longbridge-quote --symbol 600519 --market CN")
+        return 1
+
+    # 自动加载本地环境变量
+    LocalSecretManager.load_local_env_to_process_env()
+
+    provider = LongbridgeQuoteProvider()
+    quote = provider.fetch_quote(symbol=symbol, market=market)
+
+    status = quote.get("data_status", "fetch_failed")
+    if status == "ok":
+        print(f"股票代码: {quote.get('symbol', '')} / {quote.get('raw_symbol', '')}")
+        print(f"市场: {quote.get('market', '')}")
+        print(f"名称: {quote.get('name', '')}")
+        print(f"当前价: {quote.get('current_price')}")
+        print(f"涨跌幅: {quote.get('change_percent')}")
+        print(f"更新时间: {quote.get('timestamp')}")
+        print(f"数据状态: {status}")
+        return 0
+
+    if status == "missing_env":
+        print("提示: 缺少环境变量，请配置 LONGBRIDGE_APP_KEY/SECRET/ACCESS_TOKEN。")
+        return 0
+    if status == "sdk_missing":
+        print("提示: 长桥 SDK 未安装或不可导入，当前返回 sdk_missing。")
+        return 0
+    if status == "unsupported_market":
+        print(f"提示: 当前暂不支持市场 {market} 的长桥行情。")
+        return 0
+    if status == "unsupported_symbol":
+        print(f"提示: 股票代码格式不支持: {symbol}")
+        return 0
+    if status == "not_found":
+        print(f"提示: 未找到 {symbol} 的长桥行情。")
+        return 0
+
+    print("错误: 长桥行情抓取失败。")
+    if quote.get("error_message"):
+        print(f"详情: {quote['error_message']}")
+    return 0
+
+
+def run_token_status() -> int:
+    manager = LocalSecretManager()
+    statuses = manager.get_secret_statuses()
+
+    for item in statuses:
+        print(f"\n[{item['provider']}]")
+        print(f"Key: {item['key']}")
+        print(f"显示名: {item['display_name']}")
+        print(f"状态: {item['status']}")
+        print(f"来源: {item['source']}")
+        print(f"脱敏值: {item['masked']}")
+        print(f"长度: {item['length']}")
+        print(f"更新时间: {item['updated_at'] or '-'}")
+        print(f"最近检测: {item['last_checked_at'] or '-'}")
+        print(f"备注: {item['note']}")
+    return 0
+
+
+def run_token_set(argv: list[str]) -> int:
+    try:
+        key = _get_cli_option(argv, "--key", required=True)
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py token-set --key MARKETAUX_API_TOKEN")
+        return 1
+
+    manager = LocalSecretManager()
+    try:
+        first_value = getpass(f"请输入 {key}: ")
+        second_value = getpass(f"请再次输入 {key}: ")
+    except (EOFError, KeyboardInterrupt):
+        print("已取消设置。")
+        return 130
+
+    if first_value != second_value:
+        print("两次输入不一致，未保存。")
+        return 1
+
+    result = manager.set_secret(key, first_value)
+    print(f"Key: {result['key']}")
+    print(f"状态: {result['status']}")
+    print(f"脱敏值: {result['masked']}")
+    return 0
+
+
+def run_token_clear(argv: list[str]) -> int:
+    try:
+        key = _get_cli_option(argv, "--key", required=True)
+    except ValueError as error:
+        print(str(error))
+        print("用法: python3 app.py token-clear --key MARKETAUX_API_TOKEN")
+        return 1
+
+    first_confirm = input(f"确认清空 {key} 吗？输入 YES 继续: ").strip()
+    if first_confirm != "YES":
+        print("已取消清空。")
+        return 1
+    second_confirm = input(f"再次确认清空 {key}，输入 YES 继续: ").strip()
+    if second_confirm != "YES":
+        print("已取消清空。")
+        return 1
+
+    manager = LocalSecretManager()
+    result = manager.clear_secret(key)
+    print(f"Key: {result['key']}")
+    print(f"状态: {result['status']}")
+    print(f"脱敏值: {result['masked']}")
     return 0
 
 
@@ -1203,6 +1348,21 @@ def main() -> int:
     if sys.argv[1] == "kline":
         return run_kline_cli(sys.argv[2:])
 
+    if sys.argv[1] == "longbridge-status":
+        return run_longbridge_status()
+
+    if sys.argv[1] == "longbridge-quote":
+        return run_longbridge_quote_cli(sys.argv[2:])
+
+    if sys.argv[1] == "token-status":
+        return run_token_status()
+
+    if sys.argv[1] == "token-set":
+        return run_token_set(sys.argv[2:])
+
+    if sys.argv[1] == "token-clear":
+        return run_token_clear(sys.argv[2:])
+
     print("用法:")
     print("python app.py")
     print("python app.py --version")
@@ -1223,6 +1383,11 @@ def main() -> int:
     print("python app.py quote --symbol 600519 --market CN")
     print("python app.py quote-batch --symbols 600519,300750,000001 --market CN")
     print("python app.py kline --symbol 600519 --market CN --period daily --adjust qfq --limit 20")
+    print("python app.py longbridge-status")
+    print("python app.py longbridge-quote --symbol 600519 --market CN")
+    print("python app.py token-status")
+    print("python app.py token-set --key MARKETAUX_API_TOKEN")
+    print("python app.py token-clear --key MARKETAUX_API_TOKEN")
     return 1
 
 

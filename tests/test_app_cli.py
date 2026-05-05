@@ -75,7 +75,7 @@ def test_main_sync_frontend_snapshot_invokes_sync(monkeypatch) -> None:
     assert app.main() == 0
 
 
-def test_main_international_news_without_token_shows_hint(monkeypatch, capsys) -> None:
+def test_main_international_news_without_token_shows_hint(monkeypatch, capsys, tmp_path) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
@@ -87,11 +87,13 @@ def test_main_international_news_without_token_shows_hint(monkeypatch, capsys) -
         lambda: DummyInternationalNewsFetcher(configured=False),
     )
 
-    result = app.main()
-    captured = capsys.readouterr()
+    with patch("app.get_project_root", return_value=tmp_path):
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            result = app.main()
+            captured = capsys.readouterr()
 
-    assert result == 1
-    assert "未配置 MARKETAUX_API_TOKEN" in captured.out
+            assert result == 1
+            assert "未配置 MARKETAUX_API_TOKEN" in captured.out
 
 
 def test_main_international_news_prints_news_items(monkeypatch, capsys) -> None:
@@ -147,16 +149,19 @@ def test_main_international_news_prints_empty_result_hint(monkeypatch, capsys) -
     assert "未获取到相关新闻" in captured.out
 
 
-def test_main_marketaux_status_without_token(monkeypatch, capsys) -> None:
+def test_main_marketaux_status_without_token(monkeypatch, capsys, tmp_path) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "marketaux-status"])
     monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
 
-    result = app.main()
-    captured = capsys.readouterr()
+    # 模拟项目根目录为空，避免加载真实 .env
+    with patch("app.get_project_root", return_value=tmp_path):
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            result = app.main()
+            captured = capsys.readouterr()
 
-    assert result == 0
-    assert "Marketaux 配置状态: 未配置" in captured.out
-    assert '设置方式: export MARKETAUX_API_TOKEN="你的 token"' in captured.out
+            assert result == 0
+            assert "Marketaux 配置状态: 未配置" in captured.out
+            assert '设置方式: export MARKETAUX_API_TOKEN="你的 token"' in captured.out
 
 
 def test_main_marketaux_status_masks_token(monkeypatch, capsys) -> None:
@@ -362,6 +367,135 @@ def test_main_quote_batch_unsupported_market(monkeypatch, capsys) -> None:
         assert "unsupported_market 数量: 2" in captured.out
         assert "Unsupported market: US" in captured.out
 
+def test_main_longbridge_status_without_env(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-status"])
+    # 确保环境变量缺失
+    for key in ("LONGBRIDGE_APP_KEY", "LONGBRIDGE_APP_SECRET", "LONGBRIDGE_ACCESS_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+
+    # 模拟项目根目录为空，避免加载真实 .env
+    with patch("app.get_project_root", return_value=tmp_path):
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            result = app.main()
+            captured = capsys.readouterr()
+
+            assert result == 0
+            assert "provider: longbridge" in captured.out
+            assert "env:" in captured.out
+            assert "LONGBRIDGE_APP_KEY: missing" in captured.out
+
+def test_main_longbridge_quote_sdk_missing(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "data_status": "sdk_missing",
+        "error_message": "SDK missing",
+    }
+    with patch("app.LongbridgeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "SDK 未安装或不可导入" in captured.out
+
+def test_main_longbridge_quote_missing_env(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "data_status": "missing_env",
+        "error_message": "Missing environment variables",
+    }
+    with patch("app.LongbridgeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+        assert result == 0
+        assert "缺少环境变量" in captured.out
+
+def test_help_contains_longbridge_commands(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "unknown"])
+    result = app.main()
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "longbridge-status" in captured.out
+    assert "longbridge-quote" in captured.out
+
+
+def test_main_token_status_does_not_output_real_token(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "token-status"])
+    mock_manager = MagicMock()
+    mock_manager.get_secret_statuses.return_value = [
+        {
+            "key": "MARKETAUX_API_TOKEN",
+            "provider": "Marketaux",
+            "display_name": "Marketaux 新闻 API",
+            "status": "configured",
+            "source": ".env",
+            "masked": "****1234",
+            "length": 16,
+            "updated_at": "2026-05-05T10:00:00",
+            "last_checked_at": "2026-05-05T10:10:00",
+            "note": "国际市场新闻",
+        }
+    ]
+
+    with patch("app.LocalSecretManager", return_value=mock_manager):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "****1234" in captured.out
+        assert "demo-secret-1234" not in captured.out
+
+
+def test_main_token_set_uses_getpass_and_masks_output(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "token-set", "--key", "MARKETAUX_API_TOKEN"])
+    values = iter(["demo-secret-1234", "demo-secret-1234"])
+    monkeypatch.setattr(app, "getpass", lambda prompt: next(values))
+
+    mock_manager = MagicMock()
+    mock_manager.set_secret.return_value = {
+        "key": "MARKETAUX_API_TOKEN",
+        "status": "configured",
+        "masked": "****1234",
+    }
+
+    with patch("app.LocalSecretManager", return_value=mock_manager):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "****1234" in captured.out
+        assert "demo-secret-1234" not in captured.out
+
+
+def test_main_token_clear_keeps_output_masked(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "token-clear", "--key", "MARKETAUX_API_TOKEN"])
+    confirmations = iter(["YES", "YES"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(confirmations))
+
+    mock_manager = MagicMock()
+    mock_manager.clear_secret.return_value = {
+        "key": "MARKETAUX_API_TOKEN",
+        "status": "empty",
+        "masked": "",
+    }
+
+    with patch("app.LocalSecretManager", return_value=mock_manager):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "状态: empty" in captured.out
+
+
+def test_help_contains_token_commands(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "unknown"])
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "token-status" in captured.out
+    assert "token-set --key MARKETAUX_API_TOKEN" in captured.out
+    assert "token-clear --key MARKETAUX_API_TOKEN" in captured.out
 
 def test_main_kline_success(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
@@ -477,3 +611,49 @@ def test_main_kline_fetch_failed(monkeypatch, capsys) -> None:
         assert "抓取 K线数据失败" in captured.out
         assert "network down" in captured.out
         assert "Traceback" not in captured.out
+
+
+def test_main_marketaux_status_auto_loads_env(monkeypatch, capsys, tmp_path) -> None:
+    # 模拟项目根目录 .env
+    env_path = tmp_path / ".env"
+    env_path.write_text("MARKETAUX_API_TOKEN=auto-loaded-token-9999\n", encoding="utf-8")
+    
+    monkeypatch.setattr(sys, "argv", ["app.py", "marketaux-status"])
+    # 确保环境变量缺失
+    monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
+    
+    # 模拟 get_project_root 返回 tmp_path
+    from pathlib import Path
+    with patch("app.get_project_root", return_value=tmp_path):
+        # 还需要 mock LocalSecretManager 内部的 get_project_root 或者直接 patch LocalSecretManager
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            result = app.main()
+            captured = capsys.readouterr()
+
+            assert result == 0
+            assert "Marketaux 配置状态: 已配置" in captured.out
+            assert "Token 显示: ****9999" in captured.out
+
+
+def test_main_longbridge_status_auto_loads_env(monkeypatch, capsys, tmp_path) -> None:
+    # 模拟项目根目录 .env
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "LONGBRIDGE_APP_KEY=auto-key-1111\n"
+        "LONGBRIDGE_APP_SECRET=auto-secret-2222\n",
+        encoding="utf-8"
+    )
+    
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-status"])
+    # 确保环境变量缺失
+    for key in ("LONGBRIDGE_APP_KEY", "LONGBRIDGE_APP_SECRET"):
+        monkeypatch.delenv(key, raising=False)
+    
+    with patch("app.get_project_root", return_value=tmp_path):
+        with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
+            result = app.main()
+            captured = capsys.readouterr()
+
+            assert result == 0
+            assert "LONGBRIDGE_APP_KEY: present" in captured.out
+            assert "LONGBRIDGE_APP_SECRET: present" in captured.out

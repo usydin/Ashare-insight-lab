@@ -21,7 +21,10 @@ class DummyResponse:
         return self._payload
 
 
-def test_fetcher_is_safe_without_token() -> None:
+def test_fetcher_is_safe_without_token(monkeypatch) -> None:
+    # 强制清理环境变量，避免从环境获取 token
+    monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
+    
     fetcher = FreeInternationalNewsFetcher(api_token=None)
 
     assert fetcher.is_configured() is False
