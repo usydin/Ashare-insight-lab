@@ -376,13 +376,16 @@ def test_main_longbridge_status_without_env(monkeypatch, capsys, tmp_path) -> No
     # 模拟项目根目录为空，避免加载真实 .env
     with patch("app.get_project_root", return_value=tmp_path):
         with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
-            result = app.main()
-            captured = capsys.readouterr()
+            with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+                result = app.main()
+                captured = capsys.readouterr()
 
-            assert result == 0
-            assert "provider: longbridge" in captured.out
-            assert "env:" in captured.out
-            assert "LONGBRIDGE_APP_KEY: missing" in captured.out
+                assert result == 0
+                assert "provider: longbridge" in captured.out
+                assert "env:" in captured.out
+                assert "LONGBRIDGE_APP_KEY: missing" in captured.out
+                assert "auth_mode_candidate: missing_app_credentials" in captured.out
+                assert "token_file: missing" in captured.out
 
 def test_main_longbridge_quote_sdk_missing(monkeypatch, capsys) -> None:
     monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
@@ -417,6 +420,8 @@ def test_help_contains_longbridge_commands(monkeypatch, capsys) -> None:
     assert result == 1
     assert "longbridge-status" in captured.out
     assert "longbridge-quote" in captured.out
+    assert "longbridge-oauth-help" in captured.out
+    assert "longbridge-oauth-status" in captured.out
 
 
 def test_main_token_status_does_not_output_real_token(monkeypatch, capsys) -> None:
@@ -622,8 +627,6 @@ def test_main_marketaux_status_auto_loads_env(monkeypatch, capsys, tmp_path) -> 
     # 确保环境变量缺失
     monkeypatch.delenv("MARKETAUX_API_TOKEN", raising=False)
     
-    # 模拟 get_project_root 返回 tmp_path
-    from pathlib import Path
     with patch("app.get_project_root", return_value=tmp_path):
         # 还需要 mock LocalSecretManager 内部的 get_project_root 或者直接 patch LocalSecretManager
         with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
@@ -651,9 +654,87 @@ def test_main_longbridge_status_auto_loads_env(monkeypatch, capsys, tmp_path) ->
     
     with patch("app.get_project_root", return_value=tmp_path):
         with patch("app_core.security.local_secret_manager.get_project_root", return_value=tmp_path):
-            result = app.main()
-            captured = capsys.readouterr()
+            with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+                result = app.main()
+                captured = capsys.readouterr()
 
-            assert result == 0
-            assert "LONGBRIDGE_APP_KEY: present" in captured.out
-            assert "LONGBRIDGE_APP_SECRET: present" in captured.out
+                assert result == 0
+                assert "LONGBRIDGE_APP_KEY: present" in captured.out
+                assert "LONGBRIDGE_APP_SECRET: present" in captured.out
+                assert "auth_mode_candidate: oauth_required" in captured.out
+
+
+def test_main_longbridge_oauth_help(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-help"])
+
+    result = app.main()
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "OAuth 2.0" in captured.out
+    assert ".secrets/longbridge_oauth_token.json" in captured.out
+    assert "不接交易" in captured.out
+
+
+def test_main_longbridge_oauth_status_without_token(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-status"])
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "status: missing" in captured.out
+        assert "token_file: missing" in captured.out
+
+
+def test_main_longbridge_oauth_set_masks_output(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-set"])
+    getpass_values = iter(["demo_oauth", "demo-refresh-token-5678"])
+    input_values = iter(["2030-01-01T00:00:00+00:00", "quote"])
+    monkeypatch.setattr(app, "getpass", lambda prompt: next(getpass_values))
+    monkeypatch.setattr("builtins.input", lambda prompt: next(input_values))
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "status: configured" in captured.out
+        assert "****auth" in captured.out
+        assert "demo_oauth" not in captured.out
+
+
+def test_main_longbridge_oauth_clear(monkeypatch, capsys, tmp_path) -> None:
+    from app_core.security.longbridge_oauth_store import LongbridgeOAuthStore
+
+    store = LongbridgeOAuthStore(project_root=tmp_path)
+    store.save_oauth_token({"access_token": "demo_oauth"})
+
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-oauth-clear"])
+    confirmations = iter(["YES", "YES"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(confirmations))
+
+    with patch("app_core.security.longbridge_oauth_store.get_project_root", return_value=tmp_path):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "status: cleared" in captured.out
+        assert not store.token_path.exists()
+
+
+def test_main_longbridge_quote_oauth_required(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["app.py", "longbridge-quote", "--symbol", "600519", "--market", "CN"])
+    mock_provider = MagicMock()
+    mock_provider.fetch_quote.return_value = {
+        "data_status": "oauth_required",
+        "error_message": "当前账号未提供 legacy Access Token，请执行 longbridge-oauth-help",
+    }
+    with patch("app.LongbridgeQuoteProvider", return_value=mock_provider):
+        result = app.main()
+        captured = capsys.readouterr()
+
+        assert result == 0
+        assert "longbridge-oauth-help" in captured.out
+        assert "Traceback" not in captured.out

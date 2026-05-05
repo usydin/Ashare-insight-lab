@@ -95,7 +95,19 @@ const SettingsView = ({ data }) => {
           </div>
           <div className="meta-row">
             <span className="meta-label">Longbridge 行情 API</span>
-            <span className="meta-value">App Key / Secret / Access Token 仅显示 configured/missing</span>
+            <span className="meta-value">App Key / Secret 已配置，Legacy Access Token 未配置</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">Longbridge OAuth Token</span>
+            <span className="meta-value">未配置 / 已配置 / 已过期，仅显示脱敏状态</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">推荐下一步</span>
+            <span className="meta-value code">python3 app.py longbridge-oauth-help</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-label">安全边界</span>
+            <span className="meta-value">只读行情，不接交易</span>
           </div>
           <div className="meta-row">
             <span className="meta-label">OpenAI API</span>
