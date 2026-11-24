@@ -4,6 +4,8 @@
 
 # A股智研台 / AShare Insight Lab
 
+现有 [版权声明](COPYRIGHT.md) · [NOTICE](NOTICE.md) · [安全政策（治理审阅稿）](SECURITY.md)
+
 ## 项目定位
 
 A股智研台是一个运行在 macOS 本地环境的 A 股投研辅助平台，当前聚焦以下方向：
